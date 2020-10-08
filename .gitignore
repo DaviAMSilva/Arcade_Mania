@@ -1,4 +1,11 @@
 .vscode/
-build/
-include/data/
-bin/
+
+# build/
+# include/data/
+# bin/
+
+# Removido para que seja possível construir o binário sem precisar do devkitPro
+
+# Compiladores:
+# https://sourceforge.net/projects/vba/ = Sem instalação mas simples
+# https://mgba.io/ = Precisa de instalação mas é muito bom

@@ -27,7 +27,7 @@ BLDDIR := build
 
 
 # Pastas que precisam ser criadas
-BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(BLDDIR)/$(DATDIR) $(INCDIR)/$(DATDIR)
+BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(INCDIR)/$(DATDIR) $(BLDDIR)/$(DATDIR)
 
 
 
@@ -35,9 +35,23 @@ BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(BLDDIR)/$(DATDIR) $(INCDIR)/$(DATDIR)
 SOURCES := $(wildcard $(SRCDIR)/*.c)
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BLDDIR)/%.o, $(SOURCES))
 
-DATA_FILES		:= $(wildcard $(DATDIR)/*.bmp)
-# DATA_SOURCES	:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_FILES))
-DATA_OBJECTS	:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_FILES))
+DATA_BG_FILES		:= $(wildcard $(DATDIR)/BG_*.bmp)
+DATA_BG_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_BG_FILES))
+DATA_BG_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_BG_FILES))
+DATA_BG_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_BG_FILES))
+
+DATA_FILES		:= $(DATA_BG_FILES)
+DATA_SOURCES	:= $(DATA_BG_SOURCES)
+DATA_INCLUDES	:= $(DATA_BG_INCLUDES)
+DATA_OBJECTS	:= $(DATA_BG_OBJECTS)
+
+DATA_BG_PALETTE	:= $(BLDDIR)/$(DATDIR)/BG_MasterPalette
+DATA_FILES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%, $(DATA_BG_FILES))
+
+
+# Outas parametros para a compilação
+INCLUDES	:= -I $(INCDIR) -I $(INCDIR)/$(DATDIR) -I $(DEVKITPRO)/libgba/include -I $(DEVKITPRO)/libtonc/include
+LIBRARIES	:= $(DEVKITPRO)/libgba/lib/* $(DEVKITPRO)/libtonc/lib/*
 
 
 
@@ -54,45 +68,63 @@ FINAL_ARGS 		:= -specs=gba.specs -O2 -Wall $(THUMB_ARGS)
 
 
 
-.PHONY: all clean
+.PHONY: all clean dirs data
 
 
 
-# Compila cada arquivo .c em source para .o em build
+# Converte as imagens .bmp em data/ do tipo
+# background (mode 0) para um arquivo .c e .h em build/data
+$(BLDDIR)/$(DATDIR)/BG_%.c $(BLDDIR)/$(DATDIR)/BG_%.h: $(DATDIR)/BG_%.bmp | $(BUILD_DIRS)
+	@echo "BGS - $^ -> $@"
+	@$(BMPCONV) $^ -gB8 -mRtpf -mLs -gT FF00FF -ft c -o $@
+
+
+
+# Move cada arquivo .h em build/data/ para include/data/
+$(INCDIR)/$(DATDIR)/%.h: $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)
+	@echo "MOV - $(BLDDIR)/$(DATDIR)/*.h -> $(INCDIR)/$(DATDIR)"
+	@mv $^ $(INCDIR)/$(DATDIR)
+
+# Compila cada arquivo .c em source/ para .o em build/
 $(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
-	@echo "$^ -> $@"
-	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@
+	@echo "C>O - $^ -> $@"
+	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@ $(INCLUDES)
 
-# TODO Pode ser excluido se o próximo target for alterado
-# Compila cada arquivo .c em build/data para .o em build/data
-#$(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c
-#	@echo "$^ -> $@"
-#	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@
+# Compila cada arquivo .c em build/data/ para .o em build/data/
+$(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c | $(BUILD_DIRS)
+	@echo "C>O - $^ -> $@"
+	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@ $(INCLUDES)
 
-# Converte cada imagem .bmp em data para .c em build/data e .h em include/data
-# $(BLDDIR)/$(DATDIR)/%.c $(INCDIR)/$(DATDIR)/%.h: $(DATDIR)/%.bmp
-# TODO Usar grit
-#	@echo "grit: $^ -> $@"
-#	@echo > $(BLDDIR)/$(basename $^).c
-#	@echo > $(INCDIR)/$(basename $^).h
 
-# Compilar o binário final
-$(TARGET).elf: $(OBJECTS)			#$(DATA_OBJECTS)
-	@echo "$(BLDDIR)/*.o -> $@"
-	@$(CC) $^ $(FINAL_ARGS) -o $@
+
+# Compila o binário .elf final
+$(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS)
+	@echo "ELF - $^ -> $@"
+	@$(CC) $^ $(LIBRARIES) $(FINAL_ARGS) -o $@ $(INCLUDES)
 
 # Compila o arquivo .gba final
 $(TARGET).gba: $(TARGET).elf
-	@echo "$^ -> $@"
+	@echo "GBA - $^ -> $@"
+	@echo -n "CPY - "
 	@$(OBJCOPY) -v -O binary $^ $@
+	@echo -n "FIX - "
 	@$(GBAFIX) $@
+
+
 
 # Cria as pastas necessárias para a compilação
 $(BUILD_DIRS):
-	@echo "Criando '$@'"
+	@echo "MKD - Criando '$@'"
 	@mkdir -p $@
+
+# Cria as pastas necessárias para a compilação
+dirs: $(BUILD_DIRS)
+
+# Cria os arquivos derivados das imagens
+# mas sem compilar os binários
+data: $(DATA_INCLUDES)
 
 # Faz a limpeza
 clean:
-	@echo "Removendo '$(BUILD_DIRS)'"
+	@echo "RMD - Removendo '$(BUILD_DIRS)'"
 	@rm -fr $(BUILD_DIRS)

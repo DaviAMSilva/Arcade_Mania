@@ -16,8 +16,9 @@ A linguagem C é uma das mais usadas no mundo e é usada no nosso curso para ens
 - Emulador:	[mGBA](https://mgba.io)
 - SDK: [devkitPro](https://devkitpro.org/)
 - Conversor de imagens: [grit](https://www.coranac.com/projects/grit/)
-- Dispositivo: Game Boy Advance SP (idêntico ao GBA)
-- [Flash Writer](https://shop.insidegadgets.com/product/gbxcart-rw/) e [Cartucho GBA](https://shop.insidegadgets.com/product/gba-32mb-1mbit-flash-save-with-rtc-flash-cart-works-with-pokemon-games/)
+- Dispositivo Físico: Game Boy Advance SP (idêntico ao GBA)
+- [Flash Writer](https://shop.insidegadgets.com/product/gbxcart-rw/)
+- [Cartucho GBA](https://shop.insidegadgets.com/product/gba-32mb-1mbit-flash-save-with-rtc-flash-cart-works-with-pokemon-games/)
 
 
 
@@ -46,12 +47,18 @@ A linguagem C é uma das mais usadas no mundo e é usada no nosso curso para ens
 
 
 ## Conceitos
+---
+
+### Entrada do Arcade
+
 ![Entrada do arcade](extra/Entrada.png)
 Entrada para o arcade com a placa com o nome do jogo. Há uma multidão do lado de fora
 
 Uma cutscene pode aparecer para apresentar o campeonato e abrir as portas
 
-<br>
+---
+
+### Dentro do Arcade
 
 ![Dentro do arcade](extra/Arcade.png)
 Dentro do arcade tem várias máquinas de jogos clássicos. Cada conjunto tem um jogo diferente
@@ -62,14 +69,16 @@ Dentro do arcade tem várias máquinas de jogos clássicos. Cada conjunto tem um
 
 3: Prêmio do final do jogo em display
 
-<br>
+---
+
 
 
 ## Falta Fazer
 - [x] Criar makefile
-- [ ] Usar grit no makefile
-- [ ] Definir os minigames
-- [ ] Permitir que o jogador se mova
-- [ ] Criar a logo inicial
-- [ ] Criar os gráficos
+- [x] Usar grit no makefile
+- [x] Criar a logo inicial
+- [ ] Função para agrupar vários tilemaps
+- [ ] Definir os minigames com uma descrição de cada um
+- [ ] Desenvolver os minigames (...)
+- [ ] Criar os gráficos para os minigames
 - [ ] Criar música?
