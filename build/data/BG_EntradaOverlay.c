@@ -10,7 +10,7 @@
 //	+ regular map (in SBBs), not compressed, 32x32 
 //	Total size: 512 + 2176 + 2048 = 4736
 //
-//	Time-stamp: 2020-10-07, 22:18:13
+//	Time-stamp: 2020-10-18, 15:16:06
 //	Exported by Cearn's GBA Image Transmogrifier, v0.8.16
 //	( http://www.coranac.com/projects/#grit )
 //

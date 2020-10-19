@@ -35,23 +35,32 @@ BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(INCDIR)/$(DATDIR) $(BLDDIR)/$(DATDIR)
 SOURCES := $(wildcard $(SRCDIR)/*.c)
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BLDDIR)/%.o, $(SOURCES))
 
+
+
+
+# Arquivos
 DATA_BG_FILES		:= $(wildcard $(DATDIR)/BG_*.bmp)
 DATA_BG_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_BG_FILES))
 DATA_BG_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_BG_FILES))
 DATA_BG_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_BG_FILES))
 
-DATA_FILES		:= $(DATA_BG_FILES)
-DATA_SOURCES	:= $(DATA_BG_SOURCES)
-DATA_INCLUDES	:= $(DATA_BG_INCLUDES)
-DATA_OBJECTS	:= $(DATA_BG_OBJECTS)
+DATA_TL_FILES		:= $(wildcard $(DATDIR)/TL_*.bmp)
+DATA_TL_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_TL_FILES))
+DATA_TL_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_TL_FILES))
+DATA_TL_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_TL_FILES))
 
-DATA_BG_PALETTE	:= $(BLDDIR)/$(DATDIR)/BG_MasterPalette
-DATA_FILES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%, $(DATA_BG_FILES))
+DATA_FILES		:= $(DATA_BG_FILES) 	$(DATA_TL_FILES)
+DATA_SOURCES	:= $(DATA_BG_SOURCES) 	$(DATA_TL_SOURCES)
+DATA_INCLUDES	:= $(DATA_BG_INCLUDES) 	$(DATA_TL_INCLUDES)
+DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)
 
 
-# Outas parametros para a compilação
-INCLUDES	:= -I $(INCDIR) -I $(INCDIR)/$(DATDIR) -I $(DEVKITPRO)/libgba/include -I $(DEVKITPRO)/libtonc/include
-LIBRARIES	:= $(DEVKITPRO)/libgba/lib/* $(DEVKITPRO)/libtonc/lib/*
+
+
+
+# Outros parametros para a compilação
+INCLUDES	:= -I $(INCDIR) -I $(DEVKITPRO)/libtonc/include
+LIBRARIES	:= $(DEVKITPRO)/libtonc/lib/libtonc.a
 
 
 
@@ -72,11 +81,18 @@ FINAL_ARGS 		:= -specs=gba.specs -O2 -Wall $(THUMB_ARGS)
 
 
 
-# Converte as imagens .bmp em data/ do tipo
+# Converte as imagens BG_*.bmp em data/ do tipo
 # background (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/BG_%.c $(BLDDIR)/$(DATDIR)/BG_%.h: $(DATDIR)/BG_%.bmp | $(BUILD_DIRS)
 	@echo "BGS - $^ -> $@"
-	@$(BMPCONV) $^ -gB8 -mRtpf -mLs -gT FF00FF -ft c -o $@
+	@$(BMPCONV) $^ -gB8 -mR8 -mLs -gT FF00FF -ft c -o $@
+
+# Converte as imagens TL_*.bmp em data/ do tipo
+# background (mode 0) para um arquivo .c e .h em build/data
+# AVISO: É impossível comprimir tiles sem gerar um tilemap o que gasta um pouco de memória ROM
+$(BLDDIR)/$(DATDIR)/TL_%.c $(BLDDIR)/$(DATDIR)/TL_%.h: $(DATDIR)/TL_%.bmp | $(BUILD_DIRS)
+	@echo "TLS - $^ -> $@"
+	@$(BMPCONV) $^ -gB8 -mR8 -gT FF00FF -ft c -o $@
 
 
 
@@ -122,7 +138,7 @@ dirs: $(BUILD_DIRS)
 
 # Cria os arquivos derivados das imagens
 # mas sem compilar os binários
-data: $(DATA_INCLUDES)
+data: $(DATA_INCLUDES) $(DATA_SOURCES)
 
 # Faz a limpeza
 clean:

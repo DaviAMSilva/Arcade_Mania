@@ -13,7 +13,7 @@ A linguagem C é uma das mais usadas no mundo e é usada no nosso curso para ens
 
 
 ## Tecnologias Necessárias
-- Emulador:	[mGBA](https://mgba.io)
+- Emuladores:	[mGBA](https://mgba.io) e [VBA](https://sourceforge.net/projects/vba/)
 - SDK: [devkitPro](https://devkitpro.org/)
 - Conversor de imagens: [grit](https://www.coranac.com/projects/grit/)
 - Dispositivo Físico: Game Boy Advance SP (idêntico ao GBA)
