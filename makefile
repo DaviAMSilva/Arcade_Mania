@@ -23,6 +23,7 @@ INCDIR := include
 DATDIR := data
 SRCDIR := source
 BLDDIR := build
+LIBDIR := lib
 
 
 
@@ -59,8 +60,8 @@ DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)
 
 
 # Outros parametros para a compilação
-INCLUDES	:= -I $(INCDIR) -I $(DEVKITPRO)/libtonc/include
-LIBRARIES	:= $(DEVKITPRO)/libtonc/lib/libtonc.a
+INCLUDES	:= -I $(INCDIR) -I $(LIBDIR)/libtonc/include
+LIBRARIES	:= -L$(LIBDIR)/libtonc/lib -ltonc -L$(LIBDIR)/libgba/lib -lgba
 
 
 
@@ -85,21 +86,21 @@ FINAL_ARGS 		:= -specs=gba.specs -O2 -Wall $(THUMB_ARGS)
 # background (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/BG_%.c $(BLDDIR)/$(DATDIR)/BG_%.h: $(DATDIR)/BG_%.bmp | $(BUILD_DIRS)
 	@echo "BGS - $^ -> $@"
-	@$(BMPCONV) $^ -gB8 -mR8 -mLs -gT FF00FF -ft c -o $@
+	@$(BMPCONV) $^ -mR8 -mLs -gT FF00FF -ft c -o $@
 
 # Converte as imagens TL_*.bmp em data/ do tipo
 # background (mode 0) para um arquivo .c e .h em build/data
 # AVISO: É impossível comprimir tiles sem gerar um tilemap o que gasta um pouco de memória ROM
 $(BLDDIR)/$(DATDIR)/TL_%.c $(BLDDIR)/$(DATDIR)/TL_%.h: $(DATDIR)/TL_%.bmp | $(BUILD_DIRS)
 	@echo "TLS - $^ -> $@"
-	@$(BMPCONV) $^ -gB8 -mR8 -gT FF00FF -ft c -o $@
+	@$(BMPCONV) $^ -mR! -mLf -gT FF00FF -ft c -o $@
 
 
 
 # Move cada arquivo .h em build/data/ para include/data/
 $(INCDIR)/$(DATDIR)/%.h: $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)
-	@echo "MOV - $(BLDDIR)/$(DATDIR)/*.h -> $(INCDIR)/$(DATDIR)"
-	@mv $^ $(INCDIR)/$(DATDIR)
+	@echo "MOV - $^ -> $@"
+	@mv $^ $@
 
 # Compila cada arquivo .c em source/ para .o em build/
 $(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
@@ -115,7 +116,7 @@ $(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c | $(BUILD_DIRS)
 
 # Compila o binário .elf final
 $(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS)
-	@echo "ELF - $^ -> $@"
+	@echo "ELF - * -> $@"
 	@$(CC) $^ $(LIBRARIES) $(FINAL_ARGS) -o $@ $(INCLUDES)
 
 # Compila o arquivo .gba final

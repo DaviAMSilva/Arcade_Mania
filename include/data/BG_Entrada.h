@@ -3,14 +3,12 @@
 
 //======================================================================
 //
-//	BG_Entrada, 256x256@8, 
+//	BG_Entrada, 240x160@16, 
 //	Transparent color : FF,00,FF
-//	+ palette 256 entries, not compressed
-//	+ 119 tiles (t|f|p reduced) not compressed
-//	+ regular map (in SBBs), not compressed, 32x32 
-//	Total size: 512 + 7616 + 2048 = 10176
+//	+ 600 tiles not compressed
+//	Total size: 76800 = 76800
 //
-//	Time-stamp: 2020-10-18, 15:16:06
+//	Time-stamp: 2020-10-28, 19:52:38
 //	Exported by Cearn's GBA Image Transmogrifier, v0.8.16
 //	( http://www.coranac.com/projects/#grit )
 //
@@ -19,14 +17,8 @@
 #ifndef GRIT_BG_ENTRADA_H
 #define GRIT_BG_ENTRADA_H
 
-#define BG_EntradaTilesLen 7616
-extern const unsigned int BG_EntradaTiles[1904];
-
-#define BG_EntradaMapLen 2048
-extern const unsigned short BG_EntradaMap[1024];
-
-#define BG_EntradaPalLen 512
-extern const unsigned short BG_EntradaPal[256];
+#define BG_EntradaTilesLen 76800
+extern const unsigned int BG_EntradaTiles[19200];
 
 #endif // GRIT_BG_ENTRADA_H
 
