@@ -1,7 +1,6 @@
 .vscode/
-*.sav
-
-# Removido para que seja possível construir o binário sem precisar do devkitPro
-# build/
-# include/data/
-# bin/
+build/
+bin/*
+!bin/*.gba
+include/data/
+extra/

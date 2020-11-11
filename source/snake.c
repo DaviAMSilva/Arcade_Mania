@@ -42,8 +42,10 @@
 #define snake_layer			se_mat[9]
 #define background_layer	se_mat[10]
 
-const COLOR rainbow_colors[]	= { CLR_RED, CLR_ORANGE, CLR_YELLOW, CLR_LIME, CLR_CYAN, CLR_BLUE, CLR_PURPLE, CLR_FUCHSIA };
-const COLOR snake_colors[]		= { 576U, 825U, 5509U };
+
+
+static const COLOR rainbow_colors[]	= { CLR_RED, CLR_ORANGE, CLR_YELLOW, CLR_LIME, CLR_CYAN, CLR_BLUE, CLR_PURPLE, CLR_FUCHSIA };
+static const COLOR snake_colors[]	= { 576U, 825U, 5509U };
 
 
 

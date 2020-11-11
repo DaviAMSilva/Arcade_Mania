@@ -6,12 +6,14 @@
 #include <string.h>
 
 #include <snake.h>
+#include <memory_raid.h>
 
 
 
 int main()
 {
-	init_snake_game();
+	// init_snake_game();
+	init_memory_raid_game();
 
 	while (1);
 }

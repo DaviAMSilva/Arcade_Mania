@@ -50,10 +50,15 @@ DATA_TL_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_
 DATA_TL_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_TL_FILES))
 DATA_TL_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_TL_FILES))
 
-DATA_FILES		:= $(DATA_BG_FILES) 	$(DATA_TL_FILES)
-DATA_SOURCES	:= $(DATA_BG_SOURCES) 	$(DATA_TL_SOURCES)
-DATA_INCLUDES	:= $(DATA_BG_INCLUDES) 	$(DATA_TL_INCLUDES)
-DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)
+DATA_SP_FILES		:= $(wildcard $(DATDIR)/SP_*.bmp)
+DATA_SP_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_SP_FILES))
+DATA_SP_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_SP_FILES))
+DATA_SP_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_SP_FILES))
+
+DATA_FILES		:= $(DATA_BG_FILES) 	$(DATA_TL_FILES)	$(DATA_SP_FILES)
+DATA_SOURCES	:= $(DATA_BG_SOURCES) 	$(DATA_TL_SOURCES)	$(DATA_SP_SOURCES)
+DATA_INCLUDES	:= $(DATA_BG_INCLUDES) 	$(DATA_TL_INCLUDES)	$(DATA_SP_INCLUDES)
+DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)	$(DATA_SP_OBJECTS)
 
 
 
@@ -73,8 +78,8 @@ all: $(TARGET).gba
 
 # Argumentos
 THUMB_ARGS 		:= -mthumb -mthumb-interwork
-DYNAMIC_ARGS 	:= -O2 -Wall $(THUMB_ARGS)
-FINAL_ARGS 		:= -specs=gba.specs -O2 -Wall $(THUMB_ARGS)
+DYNAMIC_ARGS 	:= -Wall $(THUMB_ARGS)
+FINAL_ARGS 		:= -specs=gba.specs -Wall $(THUMB_ARGS)
 
 
 
@@ -90,10 +95,15 @@ $(BLDDIR)/$(DATDIR)/BG_%.c $(BLDDIR)/$(DATDIR)/BG_%.h: $(DATDIR)/BG_%.bmp | $(BU
 
 # Converte as imagens TL_*.bmp em data/ do tipo
 # background (mode 0) para um arquivo .c e .h em build/data
-# AVISO: É impossível comprimir tiles sem gerar um tilemap o que gasta um pouco de memória ROM
 $(BLDDIR)/$(DATDIR)/TL_%.c $(BLDDIR)/$(DATDIR)/TL_%.h: $(DATDIR)/TL_%.bmp | $(BUILD_DIRS)
 	@echo "TLS - $^ -> $@"
-	@$(BMPCONV) $^ -mR! -mLf -gT FF00FF -ft c -o $@
+	@$(BMPCONV) $^ -m! -mR! -gT FF00FF -ft c -o $@
+
+# Converte as imagens SP_*.bmp em data/ do tipo
+# background (mode 0) para um arquivo .c e .h em build/data
+$(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BUILD_DIRS)
+	@echo "SPR - $^ -> $@"
+	@$(BMPCONV) $^ -m! -mR! -gB4 -gT FF00FF -ft c -o $@
 
 
 
