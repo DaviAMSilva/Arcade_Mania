@@ -95,13 +95,13 @@ typedef enum SnakeSE_D // Direções da cobra
 
 typedef struct Part
 {
-	POINT16 pos; // x e y
+	POINT pos; // x e y
 	u16 from, to;
 } ALIGN4 part_t;
 
 typedef struct Asset
 {
-	POINT16 pos; // x e y
+	POINT pos; // x e y
 	u16 se;
 } ALIGN4 asset_t;
 
@@ -147,7 +147,7 @@ typedef struct Poos
 static void create_snake	(snake_t *snake);
 static void grow_snake		(snake_t *snake);
 static void draw_snake		(snake_t *snake);
-static void move_snake		(snake_t *snake, POINT16 dir);
+static void move_snake		(snake_t *snake, POINT dir);
 static bool hit_asset		(snake_t *snake, asset_t *asset);
 
 static asset_t new_fruit	(void);
@@ -185,7 +185,7 @@ static void draw_poos		(poos_t *poos);
 
 
 
-void init_snake_game(void)
+int init_snake_game(void)
 {
 	REG_DISPCNT = DCNT_MODE0;
 
@@ -225,7 +225,7 @@ void init_snake_game(void)
 
 
 
-	POINT16 dir = { 1, 0 }, background_offset = { 0, 0 };
+	POINT dir = { 1, 0 }, background_offset = { 0, 0 };
 	asset_t fruit = new_fruit();
 	asset_t bunny = new_bunny();
 	asset_t special = new_special();
@@ -457,10 +457,10 @@ static void create_snake(snake_t *snake)
 static void grow_snake(snake_t *snake)
 {
 	snake->length++;
-	snake->body[snake->length - 1].pos = (POINT16) { 31, 31 };
+	snake->body[snake->length - 1].pos = (POINT) { 31, 31 };
 }
 
-static void move_snake(snake_t *snake, POINT16 dir)
+static void move_snake(snake_t *snake, POINT dir)
 {
 	// É ineficiente mas o GBA ainda aguenta
 	for (int i = snake->length - 1; i >= 1; i--)
@@ -522,7 +522,7 @@ static void create_poos(poos_t *poos)
 {
 	for (int i = 0; i < MAX_POOS_LENGTH; i++)
 	{
-		poos->list[i].pos = (POINT16) { 31, 31 };
+		poos->list[i].pos = (POINT) { 31, 31 };
 		poos->list[i].se = SE_POO1;
 	}
 
@@ -531,7 +531,7 @@ static void create_poos(poos_t *poos)
 
 static void new_poo(poos_t *poos, s16 x, s16 y)
 {
-	poos->list[poos->index].pos = (POINT16) { x, y };
+	poos->list[poos->index].pos = (POINT) { x, y };
 	poos->list[poos->index].se = (rand() % 10) ? SE_POO1 : SE_POO2;
 
 	poos->index = (poos->index + 1) % MAX_POOS_LENGTH; 
@@ -583,7 +583,7 @@ static asset_t new_bunny(void)
 
 static void move_bunny(asset_t *bunny)
 {
-	POINT16 rand_dir = { rand() % 5 - 2, rand() % 5 - 2 };
+	POINT rand_dir = { rand() % 5 - 2, rand() % 5 - 2 };
 
 	bunny->pos.x = MOD_WIDTH (bunny->pos.x + rand_dir.x);
 	bunny->pos.y = MOD_HEIGHT(bunny->pos.y + rand_dir.y);

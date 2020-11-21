@@ -88,19 +88,19 @@ FINAL_ARGS 		:= -specs=gba.specs -Wall $(THUMB_ARGS)
 
 
 # Converte as imagens BG_*.bmp em data/ do tipo
-# background (mode 0) para um arquivo .c e .h em build/data
+# mapa de peças (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/BG_%.c $(BLDDIR)/$(DATDIR)/BG_%.h: $(DATDIR)/BG_%.bmp | $(BUILD_DIRS)
 	@echo "BGS - $^ -> $@"
 	@$(BMPCONV) $^ -mR8 -mLs -gT FF00FF -ft c -o $@
 
 # Converte as imagens TL_*.bmp em data/ do tipo
-# background (mode 0) para um arquivo .c e .h em build/data
+# peças (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/TL_%.c $(BLDDIR)/$(DATDIR)/TL_%.h: $(DATDIR)/TL_%.bmp | $(BUILD_DIRS)
 	@echo "TLS - $^ -> $@"
 	@$(BMPCONV) $^ -m! -mR! -gT FF00FF -ft c -o $@
 
 # Converte as imagens SP_*.bmp em data/ do tipo
-# background (mode 0) para um arquivo .c e .h em build/data
+# sprite (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BUILD_DIRS)
 	@echo "SPR - $^ -> $@"
 	@$(BMPCONV) $^ -m! -mR! -gB4 -gT FF00FF -ft c -o $@

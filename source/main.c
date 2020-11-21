@@ -8,7 +8,10 @@
 #include <snake.h>
 #include <memory_raid.h>
 
-
+int snake_score				= 0;
+int snake_score_high 		= 0;
+int memory_raid_score 		= 0;
+int memory_raid_score_high	= 0;
 
 int main()
 {
