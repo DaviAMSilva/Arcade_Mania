@@ -2,7 +2,6 @@
 #include <stdlib.h>
 
 #include <tonc.h>
-#include <tonc_libgba.h>
 
 #include <data/SP_Memory_Raid.h>
 #include <data/BG_Memory_Raid.h>
@@ -19,7 +18,7 @@
 #define WARNING_TIMER	110
 #define BULLET_TIMER	130
 #define BREATHING_TIMER	150
-#define FLASH_TIMER		10
+#define FLASH_TIMER		7
 
 #define NUM_REG_OBJS	4
 #define NUM_AFF_OBJS	2
@@ -142,7 +141,7 @@ static int get_angle_index		(int dx, int dy);
 static int interpolate_angles	(int a1, int a2, float t);
 
 static void show_warnings		(int *phases_dirs, int *phases_pals, int *num_phases);
-static void shoot_bullets		(int *phases_dirs, int *phases_pals, int *num_phases);
+static int shoot_bullets		(int *phases_dirs, int *phases_pals, int *num_phases);
 
 static void update_shield		(void);
 static void update_background	(void);
@@ -209,9 +208,19 @@ static OBJ_AFFINE *obj_aff_buffer = (OBJ_AFFINE *)obj_buffer;
 
 
 
-// Guarda as pontuações
-extern int memory_raid_score;
-extern int memory_raid_score_high;
+// Guarda a pontuação
+static int internal_score = 0;
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -224,37 +233,25 @@ extern int memory_raid_score_high;
 
 int init_memory_raid_game()
 {
-	// Lista que guarda as direções e as cores para cada bala do jogo
-	int phases_dirs[MAX_PHASES] = { rand() % NUM_DIRECTIONS, 0 };
-	int phases_pals[MAX_PHASES] = { rand() % NUM_PALETTES, 0 };
-	int num_phases = 1;
-
-
-
-
-
-	srand(MEMORY_RAID_SEED);
-
-
-
-
-
-
-
-
-
-
+	REG_DISPCNT = DCNT_MODE0;
 
 	// Copia as informações necessárias sobre o background
 	memcpy32(tile8_mem[0], BG_Memory_RaidTiles, BG_Memory_RaidTilesLen / 4);
 	memcpy32(se_mem[8], BG_Memory_RaidMap, BG_Memory_RaidMapLen / 4);
 	memcpy32(pal_bg_mem, BG_Memory_RaidPal, BG_Memory_RaidPalLen / 4);
 
-
-
 	// Copia as informações necessárias sobre os objetos
 	memcpy(tile_mem_obj, SP_Memory_RaidTiles, SP_Memory_RaidTilesLen);
 	memcpy(pal_obj_mem, SP_Memory_RaidPal, SP_Memory_RaidPalLen);
+
+
+
+
+
+	// Listas que guardam as direções e as cores para cada bala do jogo
+	int phases_dirs[MAX_PHASES] = { rand() % NUM_DIRECTIONS, 0 };
+	int phases_pals[MAX_PHASES] = { rand() % NUM_PALETTES, 0 };
+	int num_phases = 1;
 
 
 
@@ -317,7 +314,7 @@ int init_memory_raid_game()
 
 
 	// Ativa os objetos e o background
-	REG_DISPCNT = MODE_0 | DCNT_OBJ | DCNT_OBJ_2D | DCNT_BG0;
+	REG_DISPCNT = DCNT_MODE0 | DCNT_OBJ | DCNT_OBJ_2D | DCNT_BG0;
 	REG_BG0CNT = BG_CBB(0) | BG_SBB(8)	| BG_REG_32x32 | BG_8BPP | BG_PRIO(3);
 
 
@@ -330,7 +327,7 @@ int init_memory_raid_game()
 
 
 	while (1)
-	{		
+	{
 		// Dá tempo de respirar
 		for (int i = 0; i < BREATHING_TIMER; i++)
 		{
@@ -349,15 +346,11 @@ int init_memory_raid_game()
 		show_warnings(phases_dirs, phases_pals, &num_phases);
 
 		// Realiza os movimentos em si
-		shoot_bullets(phases_dirs, phases_pals, &num_phases);
-
-
-
-
-
-		// Finaliza o jogo quando necessário
-		if (memory_raid_score)
-			return memory_raid_score;
+		if (shoot_bullets(phases_dirs, phases_pals, &num_phases))
+		{
+			// O jogo acabou
+			return internal_score;
+		}
 
 
 
@@ -370,6 +363,16 @@ int init_memory_raid_game()
 		num_phases++;
 	}
 }
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -427,7 +430,7 @@ static void show_warnings(int *phases_dirs, int *phases_pals, int *num_phases)
 
 
 
-static void shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
+static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 {
 	for (int cur_phase = 0; cur_phase < *num_phases; cur_phase++)
 	{
@@ -482,10 +485,7 @@ static void shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 			memset16(pal_bg_mem, CLR_BLACK, 256);
 			memset16(pal_obj_mem, CLR_BLACK, 256);
 
-
-
-			// Salva a pontuação do jogador
-			memory_raid_score = *num_phases;
+			return 1;
 		}
 		else if (bullet.pal_index != shield.pal_index)
 		{
@@ -497,39 +497,44 @@ static void shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 			obj_hide(BULLET_BUF);
 			obj_copy(BULLET_MEM, BULLET_BUF, 1);
 
-			return;
+			return 0;
 		}
-
-
-
-		vid_vsync();
-		SHIELD_REG_MEM->attr2 &= ~ATTR2_PALBANK_MASK;
-		SHIELD_REG_MEM->attr2 |= ATTR2_PALBANK(PAL_WHITE);
-		BULLET_MEM->attr2 &= ~ATTR2_PALBANK_MASK;
-		BULLET_MEM->attr2 |= ATTR2_PALBANK(PAL_WHITE);
-
-		for (int i = 0; i < FLASH_TIMER; i++)
-			vid_vsync();
-
-
-		obj_hide(BULLET_BUF);
-
-
-
-		vid_vsync();
-		obj_copy(BULLET_MEM, BULLET_BUF, 1);
-		obj_copy(SHIELD_REG_MEM, SHIELD_REG_BUF, 1);
-
-
-
-		// Tempo entre as balas
-		for (int t = 0; t < BULLET_TIMER; t++)
+		else
 		{
-			update_shield();
-			update_core();
-			obj_aff_copy(CORE_AFF_MEM, CORE_AFF_BUF, 1);
+			// O jogador acerto a bala na cor certa e ganhou pontos
+			internal_score += 100;
+
+			vid_vsync();
+			SHIELD_REG_MEM->attr2 &= ~ATTR2_PALBANK_MASK;
+			SHIELD_REG_MEM->attr2 |= ATTR2_PALBANK(PAL_WHITE);
+			BULLET_MEM->attr2 &= ~ATTR2_PALBANK_MASK;
+			BULLET_MEM->attr2 |= ATTR2_PALBANK(PAL_WHITE);
+
+			for (int i = 0; i < FLASH_TIMER; i++)
+				vid_vsync();
+
+
+			obj_hide(BULLET_BUF);
+
+
+
+			vid_vsync();
+			obj_copy(BULLET_MEM, BULLET_BUF, 1);
+			obj_copy(SHIELD_REG_MEM, SHIELD_REG_BUF, 1);
+
+
+
+			// Tempo entre as balas
+			for (int t = 0; t < BULLET_TIMER; t++)
+			{
+				update_shield();
+				update_core();
+				obj_aff_copy(CORE_AFF_MEM, CORE_AFF_BUF, 1);
+			}
 		}
 	}
+
+	return 0;
 }
 
 

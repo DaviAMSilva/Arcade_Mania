@@ -2,7 +2,6 @@
 #include <string.h>
 
 #include <tonc.h>
-#include <tonc_libgba.h>
 
 #include <data/TL_Snake.h>
 
@@ -175,6 +174,8 @@ static void draw_poos		(poos_t *poos);
 
 
 
+// Guarda a pontuação
+int internal_score = 0;
 
 
 
@@ -194,17 +195,16 @@ int init_snake_game(void)
 	REG_BG1CNT = BG_CBB(0) | BG_SBB(9)	| BG_REG_32x32 | BG_8BPP;
 	REG_BG2CNT = BG_CBB(0) | BG_SBB(10)	| BG_REG_32x32 | BG_8BPP;
 
-	vid_vsync();
-
 	// Copiando os tiles
-	memcpy32(tile8_mem[0], TL_SnakeTiles, TL_SnakeTilesLen / 4);
+	tile8_mem[0][0] = (TILE8){0};
+	memcpy32(tile8_mem[0] + 1, TL_SnakeTiles, TL_SnakeTilesLen / 4);
 	copy_background();
 
 	// Copiando a paleta de cores
 	memcpy32(pal_bg_mem, TL_SnakePal, TL_SnakePalLen / 4);
 
 	// Ativando os backgrounds
-	REG_DISPCNT |= DCNT_BG0 | DCNT_BG1 | DCNT_BG2;
+	REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_BG1 | DCNT_BG2;
 
 
 
@@ -214,14 +214,14 @@ int init_snake_game(void)
 
 
 
-
-	srand(SNAKE_SEED);
 
 	snake_t snake = { 0 };
 	create_snake(&snake);
 
 	poos_t poos = { 0 };
 	create_poos(&poos);
+
+
 
 
 
@@ -328,6 +328,8 @@ int init_snake_game(void)
 			// Chance de aparecer o especial: 2%
 			if (special_timer <= 0 && rand() % 50 == 0)
 				special = new_special();
+
+			internal_score += 100;
 		}
 
 
@@ -390,7 +392,7 @@ int init_snake_game(void)
 
 			memset16(pal_bg_mem, CLR_BLACK, 256);
 
-			return;
+			return snake.length;
 		}
 
 
