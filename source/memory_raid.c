@@ -3,6 +3,8 @@
 
 #include <tonc.h>
 
+#include <general.h>
+
 #include <data/SP_Memory_Raid.h>
 #include <data/BG_Memory_Raid.h>
 
@@ -120,14 +122,6 @@ struct Object
 } ALIGN4 warning, bullet;
 typedef struct Object warning_t, bullet_t;
 
-// typedef struct Bullet
-// {
-// 	POINT pos;
-// 	int pal_index;
-// 	OBJ_ATTR *obj;
-// 	int dir_index;
-// } ALIGN4 bullet_t;
-
 
 
 
@@ -184,7 +178,7 @@ static const int angles[] = {
 	CC45*3, CC45*4, CC45*5,
 };
 
-// Paletas de cores que existem
+// Paletas de cores que existem para o escudo
 static const int palettes[] = {
 	PAL_RED, PAL_GREEN, PAL_BLUE
 };
@@ -235,6 +229,8 @@ int init_memory_raid_game()
 {
 	REG_DISPCNT = DCNT_MODE0;
 
+
+
 	// Copia as informações necessárias sobre o background
 	memcpy32(tile8_mem[0], BG_Memory_RaidTiles, BG_Memory_RaidTilesLen / 4);
 	memcpy32(se_mem[8], BG_Memory_RaidMap, BG_Memory_RaidMapLen / 4);
@@ -272,7 +268,7 @@ int init_memory_raid_game()
 
 
 
-	// Configuração inicial dos objetos afims
+	// Configuração inicial dos objetos afins
 	obj_set_attr(
 		shield.obj,
 		ATTR0_SQUARE | ATTR0_MOSAIC | ATTR0_HIDE,
@@ -336,8 +332,6 @@ int init_memory_raid_game()
 			obj_aff_copy(CORE_AFF_MEM, CORE_AFF_BUF, 1);
 		}
 
-		update_background();
-
 
 
 
@@ -361,6 +355,10 @@ int init_memory_raid_game()
 		phases_pals[num_phases] = rand() % NUM_PALETTES;
 
 		num_phases++;
+
+
+
+		update_background();
 	}
 }
 
@@ -385,10 +383,6 @@ int init_memory_raid_game()
 
 static void show_warnings(int *phases_dirs, int *phases_pals, int *num_phases)
 {
-	obj_unhide(WARNING_BUF, ATTR0_REG);
-
-
-
 	for (int cur_phase = 0; cur_phase < *num_phases; cur_phase++)
 	{
 		warning.dir_index = phases_dirs[cur_phase];
@@ -400,6 +394,7 @@ static void show_warnings(int *phases_dirs, int *phases_pals, int *num_phases)
 
 
 
+		obj_unhide(WARNING_BUF, ATTR0_REG);
 		obj_set_pos(WARNING_BUF, warning.pos.x, warning.pos.y);
 
 		obj_copy(WARNING_MEM, WARNING_BUF, 1);
@@ -412,13 +407,20 @@ static void show_warnings(int *phases_dirs, int *phases_pals, int *num_phases)
 			update_core();
 			obj_aff_copy(CORE_AFF_MEM, CORE_AFF_BUF, 1);
 		}
+
+
+
+		// Aviso fica parado por um tempo
+		obj_hide(WARNING_BUF);
+		obj_copy(WARNING_MEM, WARNING_BUF, 1);
+
+		for (int t = 0; t < 30; t++)
+		{
+			update_shield();
+			update_core();
+			obj_aff_copy(CORE_AFF_MEM, CORE_AFF_BUF, 1);
+		}
 	}
-
-
-
-	obj_hide(WARNING_BUF);
-	vid_vsync();
-	obj_copy(WARNING_MEM, WARNING_BUF, 1);
 }
 
 
@@ -448,7 +450,7 @@ static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 
 
 		// Testa para ver se o escudo e a bala não colidiram ainda
-		while (30 < ABS(shield.pos.x + 32 - bullet.pos.x - 16) + ABS(shield.pos.y + 32 - bullet.pos.y - 16))
+		while (32 < ABS(shield.pos.x + 32 - bullet.pos.x - 16) + ABS(shield.pos.y + 32 - bullet.pos.y - 16))
 		{
 			bullet.pos.x += directions[bullet.dir_index].x;
 			bullet.pos.y += directions[bullet.dir_index].y;
@@ -468,22 +470,10 @@ static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 		// O jogador não estava na direção certa e o jogo acabou
 		if (bullet.dir_index != shield.dir_index)
 		{
-			// Espera 2s
-			for (int i = 0; i < 120; i++)
-				vid_vsync();
+			// Som de morte
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_F, 3);
 
-			// Escurece a tela depois de 5s
-			for (int i = 0; i < 5; i++)
-			{
-				for (int j = 0; j < 60; j++)
-					vid_vsync();
-
-				clr_fade_fast(pal_bg_mem, CLR_BLACK, pal_bg_mem, 256, 12);
-				clr_fade_fast(pal_obj_mem, CLR_BLACK, pal_obj_mem, 256, 12);
-			}
-
-			memset16(pal_bg_mem, CLR_BLACK, 256);
-			memset16(pal_obj_mem, CLR_BLACK, 256);
+			fade_to_black();
 
 			return 1;
 		}
@@ -493,8 +483,16 @@ static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 			// ele é forçado a repetir os movimentos por mais uma fase
 			(*num_phases)--;
 
-			vid_vsync();
+			
+
+			// Som de batida um pouco diferente
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_D, 0);
+
+
+
 			obj_hide(BULLET_BUF);
+
+			VBlankIntrWait();
 			obj_copy(BULLET_MEM, BULLET_BUF, 1);
 
 			return 0;
@@ -502,23 +500,26 @@ static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 		else
 		{
 			// O jogador acerto a bala na cor certa e ganhou pontos
-			internal_score += 100;
+			internal_score++;
 
-			vid_vsync();
+			VBlankIntrWait();
 			SHIELD_REG_MEM->attr2 &= ~ATTR2_PALBANK_MASK;
 			SHIELD_REG_MEM->attr2 |= ATTR2_PALBANK(PAL_WHITE);
 			BULLET_MEM->attr2 &= ~ATTR2_PALBANK_MASK;
 			BULLET_MEM->attr2 |= ATTR2_PALBANK(PAL_WHITE);
 
-			for (int i = 0; i < FLASH_TIMER; i++)
-				vid_vsync();
+			VBlankIntrDelay(FLASH_TIMER);
+
+
+
+			// Som de batida
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_D, -2);
+
 
 
 			obj_hide(BULLET_BUF);
 
-
-
-			vid_vsync();
+			VBlankIntrWait();
 			obj_copy(BULLET_MEM, BULLET_BUF, 1);
 			obj_copy(SHIELD_REG_MEM, SHIELD_REG_BUF, 1);
 
@@ -619,7 +620,7 @@ static void update_shield()
 
 
 	// Atualiza o escudo para a memória
-	vid_vsync();
+	VBlankIntrWait();
 	obj_copy(SHIELD_REG_MEM, SHIELD_REG_BUF, 1);
 	obj_aff_copy(SHIELD_AFF_MEM, SHIELD_AFF_BUF, 1);
 }
@@ -629,7 +630,7 @@ static void update_shield()
 // Muda as cores do background
 static void update_background()
 {
-	vid_vsync();
+	VBlankIntrWait();
 	clr_rotate(BG_GRADIENT_PTR, BG_GRADIENT_NUM, 1);
 }
 
@@ -641,10 +642,6 @@ static void update_core()
 	core.real_angle -= 100;
 
 	obj_aff_rotate(CORE_AFF_BUF, core.real_angle);
-
-	// vid_vsync();
-	// obj_copy(CORE_REG_MEM, CORE_REG_BUF, 1);
-	// obj_aff_copy(CORE_AFF_MEM, CORE_AFF_BUF, 1);
 }
 
 

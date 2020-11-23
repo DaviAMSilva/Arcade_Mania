@@ -11,10 +11,27 @@
 
 
 
-extern int snake_score;
-extern int snake_score_high;
-extern int memory_raid_score;
-extern int memory_raid_score_high;
+
+
+
+
+
+// 300 = 5s
+#define RESET_TIMER 300
+
+
+
+
+
+
+
+
+
+
+extern u8 snake_score;
+extern u8 snake_score_high;
+extern u8 memory_raid_score;
+extern u8 memory_raid_score_high;
 
 
 
@@ -27,37 +44,78 @@ extern int memory_raid_score_high;
 
 gameIndex_t init_menu(void)
 {
+	REG_DISPCNT = DCNT_MODE0;
+
+
+
+	// Definindo os mapas
+	REG_BG0CNT = BG_CBB(0) | BG_SBB(24)	| BG_REG_64x32 | BG_8BPP | BG_PRIO(1);
+	REG_BG1CNT = BG_CBB(2) | BG_SBB(26)	| BG_REG_32x32 | BG_8BPP | BG_PRIO(0);
+
+	// Copiando os tiles
+	memcpy32(tile8_mem[0], BG_MenuTiles, BG_MenuTilesLen / 4);
+	memcpy32(tile8_mem[2], BG_MenuOverlayTiles, BG_MenuOverlayTilesLen / 4);
+
+	// Copiando os mapas
+	memcpy32(se_mem[24], BG_MenuMap, BG_MenuMapLen / 4);
+	memcpy32(se_mem[26], BG_MenuOverlayMap, BG_MenuOverlayMapLen / 4);
+
+	// A paleta de cores é igual para os dois
+	memcpy32(pal_bg_mem, BG_MenuPal, BG_MenuPalLen / 4);
+	pal_bg_mem[0] = CLR_BLACK;
+
+
+
+
+
 	// Toda vez que volta para o menu continua no mesmo lugar
 	static int game_index = SNAKE_GAME;
 	static int xoffset = 0;
 
+	// Usado para reiniciar a pontuação mais alta
+	int reset_timer = 0;
 
 
 
 
 
+	// Guarda as strings das pontuações
+	char scores_buffer[4][7] = {0};
+
+	sprintf(scores_buffer[0], "%6.6d", 100 * snake_score_high);
+	sprintf(scores_buffer[1], "%6.6d", 100 * snake_score);
+	sprintf(scores_buffer[2], "%6.6d", 100 * memory_raid_score_high);
+	sprintf(scores_buffer[3], "%6.6d", 100 * memory_raid_score);
 
 
 
+	// Muito complicado para explicar, apenas inicia o texto para as pontuações
+	tte_init_se(
+        0,
+        BG_CBB(0) | BG_SBB(24)	| BG_REG_64x32 | BG_8BPP | BG_PRIO(1),
+        BG_MenuTilesLen / sizeof(TILE8),
+        CLR_WHITE,
+        14,
+        NULL,
+        NULL
+	); 
 
-	REG_DISPCNT = DCNT_MODE0;
-	
-	REG_BG0CNT = BG_CBB(0) | BG_SBB(16)	| BG_REG_64x32 | BG_8BPP | BG_PRIO(1);
-	REG_BG1CNT = BG_CBB(1) | BG_SBB(18)	| BG_REG_32x32 | BG_8BPP | BG_PRIO(0);
 
-	// Copiando os tiles
-	memcpy32(tile8_mem[0], BG_MenuTiles, BG_MenuTilesLen / 4);
-	memcpy32(tile8_mem[1], BG_MenuOverlayTiles, BG_MenuOverlayTilesLen / 4);
 
-	// Copiando os mapas
-	memcpy32(se_mem[16], BG_MenuMap, BG_MenuMapLen / 4);
-	memcpy32(se_mem[18], BG_MenuOverlayMap, BG_MenuOverlayMapLen / 4);
+	// Imprime as pontuações atuais e as maiores pontuações
+	tte_set_pos(64, 64);
+	tte_write(scores_buffer[0]);
+	tte_set_pos(64, 72);
+	tte_write(scores_buffer[1]);
+	tte_set_pos(64, 64 + 256);
+	tte_write(scores_buffer[2]);
+	tte_set_pos(64, 72 + 256);
+	tte_write(scores_buffer[3]);
 
-	// A paleta de cores é igual para os dois
-	memcpy32(pal_bg_mem, BG_MenuPal, BG_MenuPalLen / 4);
+
 
 	// Ativando os backgrounds
-	REG_DISPCNT |= DCNT_BG0 | DCNT_BG1;
+	REG_DISPCNT = DCNT_MODE0 | DCNT_BG0 | DCNT_BG1;
 	REG_BG0HOFS = xoffset;
 
 
@@ -75,6 +133,34 @@ gameIndex_t init_menu(void)
 
 
 
+		// Se o jogador segurar SELECT as pontuações são resetadas
+		if (key_is_down(KEY_SELECT))
+		{
+			if (reset_timer > RESET_TIMER)
+			{
+				snake_score				= 0;
+				snake_score_high		= 0;
+				memory_raid_score		= 0;
+				memory_raid_score_high	= 0;
+
+				// Marca como não salvo ainda
+				sram_mem[NULL_GAME]	= 0xFF;
+
+				return NULL_GAME;
+			}
+
+			reset_timer++;
+			VBlankIntrWait();
+		}
+		else
+		{
+			// O botão SELECT foi soltado e o timer reiniciou
+			reset_timer = 0;
+		}
+		
+		
+
+		// Retorna para main e executa o jogo especificado
 		if (key_hit(KEY_START))
 		{
 			return game_index;
@@ -89,7 +175,7 @@ gameIndex_t init_menu(void)
 			for (int i = 0; i < 64; i++)
 			{
 				xoffset += 4;
-				vid_vsync();
+				VBlankIntrWait();
 				REG_BG0HOFS = xoffset;
 			}
 
@@ -100,7 +186,7 @@ gameIndex_t init_menu(void)
 			for (int i = 0; i < 64; i++)
 			{
 				xoffset -= 4;
-				vid_vsync();
+				VBlankIntrWait();
 				REG_BG0HOFS = xoffset;
 			}
 

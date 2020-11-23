@@ -7,8 +7,9 @@ typedef enum GameIndex
 {
 	SNAKE_GAME,
 	MEMORY_RAID_GAME,
+	NULL_GAME,
 } gameIndex_t;
 
-void clear_video_mem(void);
+void fade_to_black(void);
 
 #endif /* GENERAL_H */

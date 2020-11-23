@@ -3,6 +3,8 @@
 
 #include <tonc.h>
 
+#include <general.h>
+
 #include <data/TL_Snake.h>
 
 
@@ -243,7 +245,7 @@ int init_snake_game(void)
 		for (int i = 0; i < frame_skip; i++)
 		{
 			// Espera até o próximo frame
-			vid_vsync();
+			VBlankIntrWait();
 
 			// É preciso testar as teclas em cada passagem
 			key_poll();
@@ -270,8 +272,7 @@ int init_snake_game(void)
 			memcpy16(SNAKE_PALETTE_PTR, snake_colors, sizeof(snake_colors) / 2);
 
 			// Dá tempo de processar a mudança
-			for (int i = 0; i < 45; i++)
-				vid_vsync();
+			VBlankIntrDelay(60);
 		}
 		else
 		{
@@ -321,6 +322,11 @@ int init_snake_game(void)
 		// A cobra acaba de acertar a fruta
 		if (hit_asset(&snake, &fruit))
 		{
+			// Som de comida
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_D, 0);
+
+
+
 			grow_snake(&snake);
 			fruit = new_fruit();
 			food_timer = FOOD_TIMER;
@@ -329,7 +335,7 @@ int init_snake_game(void)
 			if (special_timer <= 0 && rand() % 50 == 0)
 				special = new_special();
 
-			internal_score += 100;
+			internal_score++;
 		}
 
 
@@ -337,10 +343,19 @@ int init_snake_game(void)
 		// A cobra acaba de acertar o coelho
 		if (hit_asset(&snake, &bunny))
 		{
+			// Som de comida
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_D, 0);
+
+
+
 			// Chance de crescer duas vezes
 			grow_snake(&snake);
-			if (rand() % 10 == 0)
+
+			if (rand() % 7 == 0)
+			{
 				grow_snake(&snake);
+				internal_score++;
+			}
 
 			bunny = new_bunny();
 			food_timer = FOOD_TIMER * (rand() % 2 + 1);
@@ -348,6 +363,8 @@ int init_snake_game(void)
 			// Chance de aparecer o especial: 5%
 			if (special_timer <= 0 && rand() % 20 == 0)
 				special = new_special();
+
+			internal_score++;
 		}
 
 
@@ -355,6 +372,10 @@ int init_snake_game(void)
 		// A cobra acaba de acertar o especial
 		if (hit_asset(&snake, &special))
 		{
+			// Som do especial
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_A, 3);
+
+
 			// Esconde o especial fora do mapa
 			special.pos.x = 31;
 			special.pos.y = 31;
@@ -362,6 +383,8 @@ int init_snake_game(void)
 			// Inicia o temporizador do especial
 			special_timer += SPECIAL_TIMER;
 			frame_skip = FRAME_FAST;
+
+
 
 			// Copia um arco iris para criar a animação
 			memcpy16(SNAKE_PALETTE_PTR, rainbow_colors, sizeof(rainbow_colors) / 2);
@@ -373,26 +396,16 @@ int init_snake_game(void)
 		// a menos que o especial esteja ativado
 		if (special_timer <= 0 && (hit_snake(&snake) || hit_poos(&snake, &poos)))
 		{
-			vid_vsync();
+			// Som de morte
+			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_F, 3);
+
+			VBlankIntrWait();
 			se_fill(&snake_layer[0][0], SE_BLANK);
 			draw_snake(&snake);
 
-			// Espera 2s
-			for (int i = 0; i < 120; i++)
-				vid_vsync();
+			fade_to_black();
 
-			// Escurece a tela depois de 5s
-			for (int i = 0; i < 5; i++)
-			{
-				for (int j = 0; j < 60; j++)
-					vid_vsync();
-
-				clr_fade_fast(pal_bg_mem, CLR_BLACK, pal_bg_mem, 256, 12);
-			}
-
-			memset16(pal_bg_mem, CLR_BLACK, 256);
-
-			return snake.length;
+			return internal_score;
 		}
 
 
@@ -400,7 +413,7 @@ int init_snake_game(void)
 
 
 		// Desenhando tudo
-		vid_vsync();
+		VBlankIntrWait();
 
 		// Anima as cores da cobra
 		if (special_timer > 0)
