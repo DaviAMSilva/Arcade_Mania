@@ -28,10 +28,10 @@
 
 
 
-extern u8 snake_score;
-extern u8 snake_score_high;
-extern u8 memory_raid_score;
-extern u8 memory_raid_score_high;
+extern uint snake_score;
+extern uint snake_score_high;
+extern uint memory_raid_score;
+extern uint memory_raid_score_high;
 
 
 
@@ -80,12 +80,12 @@ gameIndex_t init_menu(void)
 
 
 	// Guarda as strings das pontuações
-	char scores_buffer[4][7] = {0};
+	char scores_buffer[4][9] = {0};
 
-	sprintf(scores_buffer[0], "%6.6d", 100 * snake_score_high);
-	sprintf(scores_buffer[1], "%6.6d", 100 * snake_score);
-	sprintf(scores_buffer[2], "%6.6d", 100 * memory_raid_score_high);
-	sprintf(scores_buffer[3], "%6.6d", 100 * memory_raid_score);
+	snprintf(scores_buffer[0], 9, "%8.8d", 100 * snake_score_high);
+	snprintf(scores_buffer[1], 9, "%8.8d", 100 * snake_score);
+	snprintf(scores_buffer[2], 9, "%8.8d", 100 * memory_raid_score_high);
+	snprintf(scores_buffer[3], 9, "%8.8d", 100 * memory_raid_score);
 
 
 
@@ -144,7 +144,7 @@ gameIndex_t init_menu(void)
 				memory_raid_score_high	= 0;
 
 				// Marca como não salvo ainda
-				sram_mem[NULL_GAME]	= 0xFF;
+				flash_save_word(0xFFFFFFFF, NULL_GAME);
 
 				return NULL_GAME;
 			}

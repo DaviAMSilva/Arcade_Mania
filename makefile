@@ -32,10 +32,16 @@ BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(INCDIR)/$(DATDIR) $(BLDDIR)/$(DATDIR)
 
 
 
+
+
+
+
+
+
+
 # Arquivos
 SOURCES := $(wildcard $(SRCDIR)/*.c)
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BLDDIR)/%.o, $(SOURCES))
-
 
 
 
@@ -64,9 +70,14 @@ DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)	$(DATA_SP_OBJECTS)
 
 
 
+
+
+
+
+
 # Outros parametros para a compilação
 INCLUDES	:= -I $(INCDIR) -I $(LIBDIR)/libtonc/include
-LIBRARIES	:= -L$(LIBDIR)/libtonc/lib -ltonc -L$(LIBDIR)/libgba/lib -lgba
+LIBRARIES	:= -L$(LIBDIR)/libtonc/lib -ltonc
 
 
 
@@ -79,11 +90,18 @@ all: $(TARGET).gba
 # Argumentos
 THUMB_ARGS 		:= -mthumb -mthumb-interwork
 DYNAMIC_ARGS 	:= -Wall $(THUMB_ARGS)
-FINAL_ARGS 		:= -specs=gba.specs -Wall $(THUMB_ARGS)
+FINAL_ARGS 		:= $(LIBRARIES) -Wall $(THUMB_ARGS) -specs=gba.specs
 
 
 
 .PHONY: all clean dirs data
+
+
+
+
+
+
+
 
 
 
@@ -107,6 +125,13 @@ $(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BU
 
 
 
+
+
+
+
+
+
+
 # Move cada arquivo .h em build/data/ para include/data/
 $(INCDIR)/$(DATDIR)/%.h: $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)
 	@echo "MOV - $^ -> $@"
@@ -114,20 +139,27 @@ $(INCDIR)/$(DATDIR)/%.h: $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)
 
 # Compila cada arquivo .c em source/ para .o em build/
 $(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
-	@echo "C>O - $^ -> $@"
+	@echo "BSC - $^ -> $@"
 	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@ $(INCLUDES)
 
 # Compila cada arquivo .c em build/data/ para .o em build/data/
 $(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c | $(BUILD_DIRS)
-	@echo "C>O - $^ -> $@"
+	@echo "BDT - $^ -> $@"
 	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@ $(INCLUDES)
+
+
+
+
+
+
+
 
 
 
 # Compila o binário .elf final
 $(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS)
 	@echo "ELF - * -> $@"
-	@$(CC) $^ $(LIBRARIES) $(FINAL_ARGS) -o $@ $(INCLUDES)
+	@$(CC) $^ $(FINAL_ARGS) -o $@ $(INCLUDES)
 
 # Compila o arquivo .gba final
 $(TARGET).gba: $(TARGET).elf
@@ -135,7 +167,14 @@ $(TARGET).gba: $(TARGET).elf
 	@echo -n "CPY - "
 	@$(OBJCOPY) -v -O binary $^ $@
 	@echo -n "FIX - "
-	@$(GBAFIX) $@
+	@$(GBAFIX) -t"$(NAME)" -m"DS" "$@"
+
+
+
+
+
+
+
 
 
 

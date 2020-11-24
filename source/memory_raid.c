@@ -29,7 +29,6 @@
 
 #define MAX_PHASES       64
 #define BULLET_SPEED     5
-#define MEMORY_RAID_SEED 15
 
 
 

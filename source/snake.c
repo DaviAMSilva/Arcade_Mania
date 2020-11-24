@@ -29,8 +29,6 @@
 #define SNAKE_PALETTE_PTR		(pal_bg_mem + SNAKE_PALETTE_INDEX)
 #define SNAKE_PALETTE_LENGTH	3
 
-#define SNAKE_SEED 15
-
 #define FRAME_NORMAL	10
 #define FRAME_FAST		5
 

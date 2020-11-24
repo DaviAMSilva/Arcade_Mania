@@ -16,14 +16,10 @@
 
 
 
-// Guarda todas as pontuações do jogo
-// OBS: Sendo apenas 1 byte só dá para guardar 256 pontos
-// O ideal era usar um inteiro e dividir suas partes na
-// memória SRAM, mas assim é mais complicado
-u8 snake_score				= 0;
-u8 snake_score_high 		= 0;
-u8 memory_raid_score 		= 0;
-u8 memory_raid_score_high	= 0;
+uint snake_score;
+uint snake_score_high;
+uint memory_raid_score;
+uint memory_raid_score_high;
 
 
 
@@ -36,13 +32,17 @@ u8 memory_raid_score_high	= 0;
 
 int main()
 {
+	snake_score				= 0;
+	snake_score_high 		= 0;
+	memory_raid_score 		= 0;
+	memory_raid_score_high	= 0;
+
+
+
 	// Permite interrupções de software com chamadas
 	// de funções presentes na BIOS
 	irq_init(NULL);
 	irq_add(II_VBLANK, NULL);
-
-	// Aparentemente melhor para acessar SRAM
-	REG_WAITCNT = WS_SRAM_8;
 
 	// Inicialização do som, muito complicado
 	REG_SNDSTAT		= SSTAT_ENABLE;
@@ -54,13 +54,11 @@ int main()
 
 
 
-
-
 	// Verifica se o jogo já foi salvo antes
-	if (sram_mem[NULL_GAME] == 1)
+	if (flash_read_word(NULL_GAME) == 1)
 	{
-		snake_score_high		= sram_mem[SNAKE_GAME];
-		memory_raid_score_high	= sram_mem[MEMORY_RAID_GAME];
+		snake_score_high		= flash_read_word(SNAKE_GAME);
+		memory_raid_score_high	= flash_read_word(MEMORY_RAID_GAME);
 	}
 
 
@@ -99,14 +97,10 @@ int main()
 			break;
 		}
 
-
-
-
-
 		// Salva a pontuação no cartucho
-		sram_mem[NULL_GAME]			= 1;
-		sram_mem[SNAKE_GAME]		= snake_score_high;
-		sram_mem[MEMORY_RAID_GAME]	= memory_raid_score_high;
+		flash_save_word(1, NULL_GAME);
+		flash_save_word(snake_score_high, SNAKE_GAME);
+		flash_save_word(memory_raid_score_high, MEMORY_RAID_GAME);
 	}
 
 
