@@ -3,6 +3,11 @@
 
 
 
+## Como experimentar
+Baixe a versão mais recente do arquivo *ArcadeMania.gba* na pasta *bin* e instale um dos emuladores que eu recomendo abaixo. Por fim abra o arquivo no emulador e aproveite.
+
+
+
 ## Motivos
 Jogos são do meu interesse e sou dono de um Game Boy Advance SP e desde muito tempo já queria programar um jogo para essa plataforma. No geral jogos envolvem várias tipos de conhecimentos, por exemplo programação, design de imagens e músicas, jogabilidade entre outros.
 
