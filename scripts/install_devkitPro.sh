@@ -1,13 +1,13 @@
 # SOURCE: https://devkitpro.org/wiki/devkitPro_pacman
 
 #!/usr/bin/env bash
-if ! [ $(id -u) = 0 ]; then
-  echo "Need root privilege to install!"
-  exit 1
-fi
+# if ! [ $(id -u) = 0 ]; then
+#   echo "Need root privilege to install!"
+#   exit 1
+# fi
 
 # ensure apt is set up to work with https sources
-sudo apt-get install apt-transport-https -y
+apt-get install apt-transport-https -y
 
 # Store devkitPro gpg key locally if we don't have it already
 if ! [ -f /usr/local/share/keyring/devkitpro-pub.gpg ]; then
@@ -21,10 +21,10 @@ if ! [ -f /etc/apt/sources.list.d/devkitpro.list ]; then
 fi
 
 # Finally install devkitPro pacman
-sudo apt-get update
-sudo apt-get install devkitpro-pacman -y
+apt-get update
+apt-get install devkitpro-pacman -y
 
 
 
 # Install gba-dev
-echo -e "6 7 10 12 14 \ny" | sudo dkp-pacman -S gba-dev
+echo -e "6 7 10 12 14 \ny" | dkp-pacman -S gba-dev
