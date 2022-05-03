@@ -1,0 +1,23 @@
+name: Build
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install devkitPro
+        run: sudo ./scripts/install_devkitPro.sh
+      - name: Build Arcade Mania
+        run: make
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: false
+          files: |
+            bin/Arcade_Mania.gba
+            LICENSE.txt

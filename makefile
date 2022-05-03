@@ -23,7 +23,6 @@ INCDIR := include
 DATDIR := data
 SRCDIR := source
 BLDDIR := build
-LIBDIR := lib
 
 
 
@@ -76,8 +75,8 @@ DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)	$(DATA_SP_OBJECTS)
 
 
 # Outros parametros para a compilação
-INCLUDES	:= -I $(INCDIR) -I $(LIBDIR)/libtonc/include
-LIBRARIES	:= -L$(LIBDIR)/libtonc/lib -ltonc
+INCLUDES	:= -I $(INCDIR) -I $(DEVKITPRO)/libtonc/include
+LIBRARIES	:= -L $(DEVKITPRO)/libtonc/lib -L $(DEVKITPRO)/libgba/lib -ltonc -lgba
 
 
 
