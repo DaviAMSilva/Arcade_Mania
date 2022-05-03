@@ -27,4 +27,4 @@ apt-get install devkitpro-pacman -y
 
 
 # Install gba-dev
-echo -e "6 7 10 12 14 \ny" | dkp-pacman -S gba-dev
+dkp-pacman -S gba-dev --noconfirm
