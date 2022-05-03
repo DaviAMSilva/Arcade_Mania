@@ -1,6 +1,5 @@
 .vscode/
 build/
-bin/*
-!bin/*.gba
+bin/
 include/data/
 extra/

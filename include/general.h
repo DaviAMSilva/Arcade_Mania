@@ -17,5 +17,6 @@ typedef enum GameIndex
 
 void flash_save_word(u32 value, uint index);
 u32 flash_read_word(uint index);
+void fade_to_black(void);
 
 #endif /* GENERAL_H */
