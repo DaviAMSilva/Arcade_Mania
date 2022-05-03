@@ -7,7 +7,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install devkitPro
-        run: ./scripts/install_devkitPro.sh
+        run: sudo ./scripts/install_devkitPro.sh
       - name: Build Arcade Mania
         run: make
       - uses: "marvinpinto/action-automatic-releases@latest"
