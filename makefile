@@ -134,6 +134,9 @@ $(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BU
 $(BLDDIR)/%.o: $(SRCDIR)/%.c $(INCDIR)/%.h | $(BUILD_DIRS)
 	@echo "BSC - $< -> $@"
 	@$(CC) $< $(CFLAGS) -c -o $@ $(INCLUDES)
+$(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
+	@echo "BSC - $< -> $@"
+	@$(CC) $< $(CFLAGS) -c -o $@ $(INCLUDES)
 
 # Compila cada arquivo .c em build/data/ para .o em build/data/
 $(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)

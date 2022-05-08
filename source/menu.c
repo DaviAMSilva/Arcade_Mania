@@ -70,7 +70,7 @@ gameIndex_t init_menu(void)
 
 
 	// Toda vez que volta para o menu continua no mesmo lugar
-	static int game_index = SNAKE_GAME;
+	static int game_index = 0;
 	static int xoffset = 0;
 
 	// Usado para reiniciar a pontuação mais alta
@@ -147,7 +147,7 @@ gameIndex_t init_menu(void)
 				// Apaga as pontuações
 				flash_erase_sector(0);
 
-				return SAVE_GAME;
+				return NULL_GAME;
 			}
 
 			reset_timer++;
@@ -164,7 +164,7 @@ gameIndex_t init_menu(void)
 		// Retorna para main e executa o jogo especificado
 		if (key_hit(KEY_START))
 		{
-			return game_index;
+			return game_index; 
 		}
 
 
