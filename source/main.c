@@ -69,7 +69,7 @@ int main()
 
 	while (1)
 	{
-		switch(init_menu() + 1) // +1 pois o índice 0 não é usado
+		switch(init_menu())
 		{
 			case NULL_GAME:
 				continue;

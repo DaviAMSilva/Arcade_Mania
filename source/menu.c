@@ -164,7 +164,7 @@ gameIndex_t init_menu(void)
 		// Retorna para main e executa o jogo especificado
 		if (key_hit(KEY_START))
 		{
-			return game_index; 
+			return game_index + 1; // +1 pois os jogos começam em 1 
 		}
 
 
