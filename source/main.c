@@ -4,6 +4,7 @@
 
 #include <general.h>
 #include <menu.h>
+#include <flash.h>
 
 #include <game_snake.h>
 #include <game_memory_raid.h>
@@ -56,7 +57,7 @@ int main()
 
 
 	// Verifica se o jogo já foi salvo antes
-	if (flash_read_word(NULL_GAME) == 1)
+	if (flash_read_word(SAVE_GAME) == SAVE_CODE)
 	{
 		snake_score_high		= flash_read_word(SNAKE_GAME);
 		memory_raid_score_high	= flash_read_word(MEMORY_RAID_GAME);
@@ -70,7 +71,7 @@ int main()
 	{
 		switch(init_menu())
 		{
-			case NULL_GAME:
+			case SAVE_GAME:
 				continue;
 			break;
 
@@ -99,21 +100,8 @@ int main()
 		}
 
 		// Salva a pontuação no cartucho
-
-		// erase command
-		*(u8 *)0xE005555 = 0xAA;
-		*(u8 *)0xE002AAA = 0x55;
-		*(u8 *)0xE005555 = 0x80;
-
-		// erase sector 0
-		*(u8 *)0xE005555 = 0xAA;
-		*(u8 *)0xE002AAA = 0x55;
-		*(u8 *)0xE000000 = 0x30;
-
-		// wait until E000000 = 0xFF
-		while (*(u8 *)0xE000000 != 0xFF)
-			;
-		flash_save_word(1, NULL_GAME);
+		flash_erase_sector(0);
+		flash_save_word(SAVE_CODE, SAVE_GAME);
 		flash_save_word(snake_score_high, SNAKE_GAME);
 		flash_save_word(memory_raid_score_high, MEMORY_RAID_GAME);
 	}

@@ -120,7 +120,7 @@ typedef struct Snake
 
 typedef struct Poos
 {
-	asset_t list[MAX_POOS_LENGTH];
+	asset_t list[MAX_POOS_LENGTH]; 
 	int index;
 } ALIGN4 poos_t;
 

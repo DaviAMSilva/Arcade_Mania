@@ -1,22 +1,19 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
-#include <stdlib.h>
 #include <tonc.h>
-
-
 
 #define NUM_GAMES 2
 
+#define SAVE_CODE 0xDEADBEEF
+
 typedef enum GameIndex
 {
+	SAVE_GAME=0, // usado para salvar o jogo
 	SNAKE_GAME,
 	MEMORY_RAID_GAME,
-	NULL_GAME,
 } gameIndex_t;
 
-void flash_save_word(u32 value, uint index);
-u32 flash_read_word(uint index);
 void fade_to_black(void);
 
 #endif /* GENERAL_H */

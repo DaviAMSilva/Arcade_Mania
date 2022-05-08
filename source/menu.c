@@ -3,6 +3,7 @@
 #include <tonc.h>
 
 #include <general.h>
+#include <flash.h>
 
 #include <data/BG_Menu.h>
 #include <data/BG_MenuOverlay.h>
@@ -143,10 +144,10 @@ gameIndex_t init_menu(void)
 				memory_raid_score		= 0;
 				memory_raid_score_high	= 0;
 
-				// Marca como não salvo ainda
-				flash_save_word(0xFFFFFFFF, NULL_GAME);
+				// Apaga as pontuações
+				flash_erase_sector(0);
 
-				return NULL_GAME;
+				return SAVE_GAME;
 			}
 
 			reset_timer++;

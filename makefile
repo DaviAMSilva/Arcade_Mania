@@ -15,7 +15,7 @@ DEVKITARM := $(DEVKITPRO)/devkitARM
 CC 		:= $(DEVKITARM)/bin/arm-none-eabi-gcc
 OBJCOPY := $(DEVKITARM)/bin/arm-none-eabi-objcopy
 GBAFIX 	:= $(DEVKITPRO)/tools/bin/gbafix
-BMPCONV := $(DEVKITPRO)/tools/bin/grit
+GRIT	:= $(DEVKITPRO)/tools/bin/grit
 
 
 
@@ -78,23 +78,21 @@ DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)	$(DATA_SP_OBJECTS)
 
 # Outros parametros para a compilação
 INCLUDES	:= -I $(INCDIR) -I $(BLDDIR) -I $(DEVKITPRO)/libtonc/include
-LIBRARIES	:= -L $(DEVKITPRO)/libtonc/lib -L $(DEVKITPRO)/libgba/lib -ltonc -lgba
+LIBRARIES	:= -L $(DEVKITPRO)/libtonc/lib -ltonc
 
 
 
 # Target da compilação
 TARGET	:= $(BINDIR)/$(NAME)
 all: $(TARGET).gba
-debug: all
-debug: CFLAGS  += -g
-debug: LDFLAGS += -g
-.PHONY: all clean dirs data debug
+
+.PHONY: all clean dirs data release debug
 
 
 # Argumentos
 THUMB_ARGS 	:= -mthumb -mthumb-interwork
 CFLAGS		:= -Wall $(THUMB_ARGS)
-LDFLAGS 	:= $(LIBRARIES) -Wall $(THUMB_ARGS) -specs=gba.specs
+LDFLAGS 	:= -Wall $(THUMB_ARGS) $(LIBRARIES) -specs=gba.specs
 
 
 
@@ -109,19 +107,19 @@ LDFLAGS 	:= $(LIBRARIES) -Wall $(THUMB_ARGS) -specs=gba.specs
 # mapa de peças (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/BG_%.c $(BLDDIR)/$(DATDIR)/BG_%.h: $(DATDIR)/BG_%.bmp | $(BUILD_DIRS)
 	@echo "BGS - $^ -> $@"
-	@$(BMPCONV) $^ -mR8 -gB8 -mLs -gT FF00FF -ft c -o $@
+	@$(GRIT) $^ -mR8 -gB8 -mLs -gT FF00FF -ft c -o $@
 
 # Converte as imagens TL_*.bmp em data/ do tipo
 # peças (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/TL_%.c $(BLDDIR)/$(DATDIR)/TL_%.h: $(DATDIR)/TL_%.bmp | $(BUILD_DIRS)
 	@echo "TLS - $^ -> $@"
-	@$(BMPCONV) $^ -m! -mR! -gB8 -gT FF00FF -ft c -o $@
+	@$(GRIT) $^ -m! -mR! -gB8 -gT FF00FF -ft c -o $@
 
 # Converte as imagens SP_*.bmp em data/ do tipo
 # sprite (mode 0) para um arquivo .c e .h em build/data
 $(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BUILD_DIRS)
 	@echo "SPR - $^ -> $@"
-	@$(BMPCONV) $^ -m! -mR! -gB4 -gT FF00FF -ft c -o $@
+	@$(GRIT) $^ -m! -mR! -gB4 -gT FF00FF -ft c -o $@
 
 
 
@@ -133,14 +131,14 @@ $(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BU
 
 
 # Compila cada arquivo .c em source/ para .o em build/
-$(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
-	@echo "BSC - $^ -> $@"
-	@$(CC) $^ $(CFLAGS) -c -o $@ $(INCLUDES)
+$(BLDDIR)/%.o: $(SRCDIR)/%.c $(INCDIR)/%.h | $(BUILD_DIRS)
+	@echo "BSC - $< -> $@"
+	@$(CC) $< $(CFLAGS) -c -o $@ $(INCLUDES)
 
 # Compila cada arquivo .c em build/data/ para .o em build/data/
-$(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c | $(BUILD_DIRS)
-	@echo "BDT - $^ -> $@"
-	@$(CC) $^ $(CFLAGS) -c -o $@ $(INCLUDES)
+$(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)
+	@echo "BDT - $< -> $@"
+	@$(CC) $< $(CFLAGS) -c -o $@ $(INCLUDES)
 
 
 
@@ -189,3 +187,13 @@ data: $(DATA_INCLUDES) $(DATA_SOURCES)
 clean:
 	@echo "RMD - Removendo '$(BUILD_DIRS)'"
 	@rm -fr $(BUILD_DIRS)
+
+# Compilar e limpar intermediários
+release: all
+	@echo "RMD - Removendo '$(BLDDIR) $(TARGET).elf'"
+	@rm -fr $(BLDDIR) $(TARGET).elf
+
+# Compilar com debug
+debug: all
+debug: CFLAGS += -g
+debug: LDFLAGS += -g
