@@ -236,8 +236,8 @@ int init_memory_raid_game()
 	memcpy32(pal_bg_mem, BG_Memory_RaidPal, BG_Memory_RaidPalLen / 4);
 
 	// Copia as informações necessárias sobre os objetos
-	memcpy(tile_mem_obj, SP_Memory_RaidTiles, SP_Memory_RaidTilesLen);
-	memcpy(pal_obj_mem, SP_Memory_RaidPal, SP_Memory_RaidPalLen);
+	memcpy32(tile_mem_obj, SP_Memory_RaidTiles, SP_Memory_RaidTilesLen / 4);
+	memcpy32(pal_obj_mem, SP_Memory_RaidPal, SP_Memory_RaidPalLen / 4);
 
 
 

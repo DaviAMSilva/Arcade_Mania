@@ -3,6 +3,7 @@
 #include <tonc.h>
 
 #include <general.h>
+#include <flash.h>
 
 #include <data/BG_Menu.h>
 #include <data/BG_MenuOverlay.h>
@@ -69,7 +70,7 @@ gameIndex_t init_menu(void)
 
 
 	// Toda vez que volta para o menu continua no mesmo lugar
-	static int game_index = SNAKE_GAME;
+	static int game_index = 0;
 	static int xoffset = 0;
 
 	// Usado para reiniciar a pontuação mais alta
@@ -143,8 +144,8 @@ gameIndex_t init_menu(void)
 				memory_raid_score		= 0;
 				memory_raid_score_high	= 0;
 
-				// Marca como não salvo ainda
-				flash_save_word(0xFFFFFFFF, NULL_GAME);
+				// Apaga as pontuações
+				flash_erase_sector(0);
 
 				return NULL_GAME;
 			}
@@ -163,7 +164,7 @@ gameIndex_t init_menu(void)
 		// Retorna para main e executa o jogo especificado
 		if (key_hit(KEY_START))
 		{
-			return game_index;
+			return game_index + 1; // +1 pois os jogos começam em 1 
 		}
 
 

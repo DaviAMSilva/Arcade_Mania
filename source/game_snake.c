@@ -120,7 +120,7 @@ typedef struct Snake
 
 typedef struct Poos
 {
-	asset_t list[MAX_POOS_LENGTH];
+	asset_t list[MAX_POOS_LENGTH]; 
 	int index;
 } ALIGN4 poos_t;
 
@@ -175,7 +175,7 @@ static void draw_poos		(poos_t *poos);
 
 
 // Guarda a pontuação
-int internal_score = 0;
+static int internal_score = 0;
 
 
 
