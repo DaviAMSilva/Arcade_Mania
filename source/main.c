@@ -4,8 +4,9 @@
 
 #include <general.h>
 #include <menu.h>
-#include <snake.h>
-#include <memory_raid.h>
+
+#include <game_snake.h>
+#include <game_memory_raid.h>
 
 
 
@@ -98,6 +99,20 @@ int main()
 		}
 
 		// Salva a pontuação no cartucho
+
+		// erase command
+		*(u8 *)0xE005555 = 0xAA;
+		*(u8 *)0xE002AAA = 0x55;
+		*(u8 *)0xE005555 = 0x80;
+
+		// erase sector 0
+		*(u8 *)0xE005555 = 0xAA;
+		*(u8 *)0xE002AAA = 0x55;
+		*(u8 *)0xE000000 = 0x30;
+
+		// wait until E000000 = 0xFF
+		while (*(u8 *)0xE000000 != 0xFF)
+			;
 		flash_save_word(1, NULL_GAME);
 		flash_save_word(snake_score_high, SNAKE_GAME);
 		flash_save_word(memory_raid_score_high, MEMORY_RAID_GAME);

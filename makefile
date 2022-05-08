@@ -1,5 +1,7 @@
 # Editável
 NAME	:= Arcade_Mania
+CODE	:= ACMN
+MAKER	:= DS
 
 
 
@@ -27,7 +29,7 @@ BLDDIR := build
 
 
 # Pastas que precisam ser criadas
-BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(INCDIR)/$(DATDIR) $(BLDDIR)/$(DATDIR)
+BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(BLDDIR)/$(DATDIR)
 
 
 
@@ -38,27 +40,27 @@ BUILD_DIRS	:= $(BINDIR) $(BLDDIR) $(INCDIR)/$(DATDIR) $(BLDDIR)/$(DATDIR)
 
 
 
-# Arquivos
+# Arquivos fonte
 SOURCES := $(wildcard $(SRCDIR)/*.c)
 OBJECTS := $(patsubst $(SRCDIR)/%.c, $(BLDDIR)/%.o, $(SOURCES))
 
 
 
-# Arquivos
+# Arquivos de dados
 DATA_BG_FILES		:= $(wildcard $(DATDIR)/BG_*.bmp)
 DATA_BG_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_BG_FILES))
 DATA_BG_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_BG_FILES))
-DATA_BG_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_BG_FILES))
+DATA_BG_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.h, $(DATA_BG_FILES))
 
 DATA_TL_FILES		:= $(wildcard $(DATDIR)/TL_*.bmp)
 DATA_TL_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_TL_FILES))
 DATA_TL_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_TL_FILES))
-DATA_TL_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_TL_FILES))
+DATA_TL_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.h, $(DATA_TL_FILES))
 
 DATA_SP_FILES		:= $(wildcard $(DATDIR)/SP_*.bmp)
 DATA_SP_SOURCES		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.c, $(DATA_SP_FILES))
 DATA_SP_OBJECTS		:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.o, $(DATA_SP_FILES))
-DATA_SP_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(INCDIR)/$(DATDIR)/%.h, $(DATA_SP_FILES))
+DATA_SP_INCLUDES	:= $(patsubst $(DATDIR)/%.bmp, $(BLDDIR)/$(DATDIR)/%.h, $(DATA_SP_FILES))
 
 DATA_FILES		:= $(DATA_BG_FILES) 	$(DATA_TL_FILES)	$(DATA_SP_FILES)
 DATA_SOURCES	:= $(DATA_BG_SOURCES) 	$(DATA_TL_SOURCES)	$(DATA_SP_SOURCES)
@@ -75,7 +77,7 @@ DATA_OBJECTS	:= $(DATA_BG_OBJECTS) 	$(DATA_TL_OBJECTS)	$(DATA_SP_OBJECTS)
 
 
 # Outros parametros para a compilação
-INCLUDES	:= -I $(INCDIR) -I $(DEVKITPRO)/libtonc/include
+INCLUDES	:= -I $(INCDIR) -I $(BLDDIR) -I $(DEVKITPRO)/libtonc/include
 LIBRARIES	:= -L $(DEVKITPRO)/libtonc/lib -L $(DEVKITPRO)/libgba/lib -ltonc -lgba
 
 
@@ -83,17 +85,16 @@ LIBRARIES	:= -L $(DEVKITPRO)/libtonc/lib -L $(DEVKITPRO)/libgba/lib -ltonc -lgba
 # Target da compilação
 TARGET	:= $(BINDIR)/$(NAME)
 all: $(TARGET).gba
-
+debug: all
+debug: CFLAGS  += -g
+debug: LDFLAGS += -g
+.PHONY: all clean dirs data debug
 
 
 # Argumentos
-THUMB_ARGS 		:= -mthumb -mthumb-interwork
-DYNAMIC_ARGS 	:= -Wall $(THUMB_ARGS)
-FINAL_ARGS 		:= $(LIBRARIES) -Wall $(THUMB_ARGS) -specs=gba.specs
-
-
-
-.PHONY: all clean dirs data
+THUMB_ARGS 	:= -mthumb -mthumb-interwork
+CFLAGS		:= -Wall $(THUMB_ARGS)
+LDFLAGS 	:= $(LIBRARIES) -Wall $(THUMB_ARGS) -specs=gba.specs
 
 
 
@@ -131,20 +132,15 @@ $(BLDDIR)/$(DATDIR)/SP_%.c $(BLDDIR)/$(DATDIR)/SP_%.h: $(DATDIR)/SP_%.bmp | $(BU
 
 
 
-# Move cada arquivo .h em build/data/ para include/data/
-$(INCDIR)/$(DATDIR)/%.h: $(BLDDIR)/$(DATDIR)/%.h | $(BUILD_DIRS)
-	@echo "MOV - $^ -> $@"
-	@mv $^ $@
-
 # Compila cada arquivo .c em source/ para .o em build/
 $(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
 	@echo "BSC - $^ -> $@"
-	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@ $(INCLUDES)
+	@$(CC) $^ $(CFLAGS) -c -o $@ $(INCLUDES)
 
 # Compila cada arquivo .c em build/data/ para .o em build/data/
 $(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c | $(BUILD_DIRS)
 	@echo "BDT - $^ -> $@"
-	@$(CC) $^ $(DYNAMIC_ARGS) -c -o $@ $(INCLUDES)
+	@$(CC) $^ $(CFLAGS) -c -o $@ $(INCLUDES)
 
 
 
@@ -158,7 +154,7 @@ $(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c | $(BUILD_DIRS)
 # Compila o binário .elf final
 $(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS)
 	@echo "ELF - * -> $@"
-	@$(CC) $^ $(FINAL_ARGS) -o $@ $(INCLUDES)
+	@$(CC) $^ $(LDFLAGS) -o $@ $(INCLUDES)
 
 # Compila o arquivo .gba final
 $(TARGET).gba: $(TARGET).elf
@@ -166,7 +162,7 @@ $(TARGET).gba: $(TARGET).elf
 	@echo -n "CPY - "
 	@$(OBJCOPY) -v -O binary $^ $@
 	@echo -n "FIX - "
-	@$(GBAFIX) -t"$(NAME)" -m"DS" "$@"
+	@$(GBAFIX) -t"$(NAME)" -m"$(MAKER)" -c"$(CODE)" "$@"
 
 
 

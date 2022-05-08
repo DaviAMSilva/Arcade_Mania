@@ -175,7 +175,7 @@ static void draw_poos		(poos_t *poos);
 
 
 // Guarda a pontuação
-int internal_score = 0;
+static int internal_score = 0;
 
 
 

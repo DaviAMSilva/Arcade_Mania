@@ -47,10 +47,52 @@ void flash_save_word(u32 value, uint index)
 	 * essa restrição
 	 */
 
-	sram_mem[index * 4 + 0] = (u8)((value & 0x000000FF) >>  0);
-	sram_mem[index * 4 + 1] = (u8)((value & 0x0000FF00) >>  8);
-	sram_mem[index * 4 + 2] = (u8)((value & 0x00FF0000) >> 16);
-	sram_mem[index * 4 + 3] = (u8)((value & 0xFF000000) >> 24);
+	// *(u8 *)0xE005555 = 0xAA;
+	// *(u8 *)0xE002AAA = 0x55;
+	// *(u8 *)0xE005555 = 0xA0;
+	// *(u8 *)(0xE000000 + 0 + index * 4) = (u8)(value >> 0 & 0xFF);
+	// while (*(u8 *)(0xE000000 + 0 + index * 4) != (u8)(value >> 0 & 0xFF));
+
+	// *(u8 *)0xE005555 = 0xAA;
+	// *(u8 *)0xE002AAA = 0x55;
+	// *(u8 *)0xE005555 = 0xA0;
+	// *(u8 *)(0xE000000 + 1 + index * 4) = (u8)(value >> 8 & 0xFF);
+	// while (*(u8 *)(0xE000000 + 1 + index * 4) != (u8)(value >> 8 & 0xFF));
+
+	// *(u8 *)0xE005555 = 0xAA;
+	// *(u8 *)0xE002AAA = 0x55;
+	// *(u8 *)0xE005555 = 0xA0;
+	// *(u8 *)(0xE000000 + 2 + index * 4) = (u8)(value >> 16 & 0xFF);
+	// while (*(u8 *)(0xE000000 + 2 + index * 4) != (u8)(value >> 16 & 0xFF));
+
+	// *(u8 *)0xE005555 = 0xAA;
+	// *(u8 *)0xE002AAA = 0x55;
+	// *(u8 *)0xE005555 = 0xA0;
+	// *(u8 *)(0xE000000 + 3 + index * 4) = (u8)(value >> 24 & 0xFF);
+	// while (*(u8 *)(0xE000000 + 3 + index * 4) != (u8)(value >> 24 & 0xFF));
+
+
+    for (u8 i = 0; i < 4; i++)
+	{
+   		// write byte command
+		*(u8 *)0xE005555 = 0xAA;
+		*(u8 *)0xE002AAA = 0x55;
+		*(u8 *)0xE005555 = 0xA0;
+
+		u8 byte = (value >> (i * 8)) & 0xFF;
+
+    	// write byte
+    	*(u8 *)(0xE000000 + i + index * 4) = byte;
+		
+    	// wait until E000000
+		while (*(u8 *)(0xE000000 + i + index * 4) != byte)
+			;
+	}
+
+	// sram_mem[index * 4 + 0] = (u8)((value & 0x000000FF) >>  0);
+	// sram_mem[index * 4 + 1] = (u8)((value & 0x0000FF00) >>  8);
+	// sram_mem[index * 4 + 2] = (u8)((value & 0x00FF0000) >> 16);
+	// sram_mem[index * 4 + 3] = (u8)((value & 0xFF000000) >> 24);
 }
 
 
