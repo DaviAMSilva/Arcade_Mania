@@ -8,6 +8,7 @@
 
 #include <game_snake.h>
 #include <game_memory_raid.h>
+#include <game_wordle.h>
 
 
 
@@ -65,6 +66,8 @@ int main()
 
 
 
+    init_wordle_game(); // FIXME: Temporário
+
 
 
 	while (1)
@@ -89,6 +92,13 @@ int main()
 				RegisterRamReset(RESET_PALETTE | RESET_VRAM);
 				memory_raid_score = init_memory_raid_game();
 				memory_raid_score_high = MAX(memory_raid_score, memory_raid_score_high);
+			break;
+
+
+
+			case WORDLE_GAME:
+				RegisterRamReset(RESET_PALETTE | RESET_VRAM);
+				init_wordle_game();
 			break;
 
 

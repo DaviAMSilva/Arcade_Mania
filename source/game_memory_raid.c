@@ -95,7 +95,7 @@ typedef enum MemRaidPalBank // Paletas possíveis
 	PAL_BLUE	= 10,
 	PAL_WHITE	= 11,
 	PAL_CORE	= 12,
-} memRaidPakBank_t;
+} memRaidPalBank_t;
 
 
 
