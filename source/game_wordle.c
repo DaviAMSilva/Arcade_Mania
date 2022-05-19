@@ -5,7 +5,6 @@
 
 #include <general.h>
 
-#include <data/BG_Wordle.h>
 #include <data/SP_Wordle.h>
 
 
