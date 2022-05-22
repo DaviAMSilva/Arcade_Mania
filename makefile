@@ -154,7 +154,7 @@ $(BLDDIR)/$(DATDIR)/%.o: $(BLDDIR)/$(DATDIR)/%.c $(BLDDIR)/$(DATDIR)/%.h | $(BUI
 
 # Compila o binário .elf final
 $(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS)
-	@echo "ELF - * -> $@"
+	@echo "ELF - '$(BLDDIR)/*.o $(BLDDIR)/$(DATDIR)/*.o' -> $@"
 	@$(CC) $^ $(LDFLAGS) -o $@ $(INCLUDES)
 
 # Compila o arquivo .gba final
