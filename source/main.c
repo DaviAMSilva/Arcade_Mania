@@ -66,10 +66,6 @@ int main()
 
 
 
-    init_wordle_game(); // FIXME: Temporário
-
-
-
 	while (1)
 	{
 		switch(init_menu())

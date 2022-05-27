@@ -16,19 +16,10 @@
 
 
 
-#define WORD_LENGTH			    5
-#define NUM_ATTEMPTS		    6
-#define NUM_POSSIBLE_LETTERS	26
-#define NUM_SPECIAL_BUTTONS     2
-#define NUM_BUTTONS			    (NUM_POSSIBLE_LETTERS + NUM_SPECIAL_BUTTONS)
-#define NUM_LETTERS			    (NUM_ATTEMPTS * WORD_LENGTH)
-
-
-
-#define WORDLE_WORD_BANK_LENGTH		WORDLE_WORD_BANK_5_LENGTH
-#define WORDLE_WORD_VALID_LENGTH	WORDLE_WORD_VALID_5_LENGTH
-#define wordle_word_bank			wordle_word_bank_5
-#define wordle_word_valid			wordle_word_valid_5
+#define WORD_LENGTH		5
+#define NUM_ATTEMPTS	6
+#define NUM_ALPHABET	26
+#define NUM_PALETTES	6
 
 
 
@@ -45,6 +36,19 @@
 #define BUTTON_OFFSET_Y	16
 #define BUTTON_LENGTH_X	4
 #define BUTTON_LENGTH_Y	7
+
+#define RESULT_SIZE_X	16
+#define RESULT_SIZE_Y	16
+#define RESULT_OFFSET_X	24
+#define RESULT_OFFSET_Y	128
+#define RESULT_LENGTH_X	WORD_LENGTH
+#define RESULT_LENGTH_Y	1
+
+
+
+#define NUM_BUTTONS	BUTTON_LENGTH_X * BUTTON_LENGTH_Y
+#define NUM_LETTERS	WORD_LENGTH * NUM_ATTEMPTS
+#define NUM_RESULTS	WORD_LENGTH
 
 
 
@@ -76,12 +80,13 @@ typedef enum WordlePalBank
 	PAL_CLOSE,
 	PAL_INCORRECT,
 	PAL_BUTTON,
+	PAL_RESULT,
 } wordlePalBank_t;
 
 typedef enum WordleSpecialSymbol
 {
 	SYMBOL_EMPTY = 0,
-	SYMBOL_BACKSPACE = 1 + NUM_POSSIBLE_LETTERS,
+	SYMBOL_BACKSPACE = 1 + NUM_ALPHABET,
 	SYMBOL_ENTER,
 	SYMBOL_SELECTOR,
 } wordleSpecialSymbol_t;
@@ -94,9 +99,27 @@ typedef enum WordleSpecialSymbol
 
 
 
+
+typedef struct LetterInfo
+{
+	char letter;
+	u8 pal;
+} letterInfo_t;
+
+
+
+
+
+
+
+
+
+
 static int get_sprite_id(int index);
-static void update_letters(OBJ_ATTR *obj_letters, char *letter_buffer, wordlePalBank_t *letter_pal_buffer);
-static void wordle_compare(wordlePalBank_t *letter_pal_buffer, char *solution, char* word);
+static void update_letters(OBJ_ATTR *obj_letters, letterInfo_t *letter_info);
+static void update_buttons(OBJ_ATTR *obj_buttons, letterInfo_t *letter_info, char *solution);
+static int wordle_compare(letterInfo_t *word, char *solution);
+static bool is_word_valid(letterInfo_t *word);
 
 
 
@@ -112,34 +135,11 @@ static void wordle_compare(wordlePalBank_t *letter_pal_buffer, char *solution, c
 // Pode parecer ineficiente mas as vezes é possível não existir tempo suficiente
 // para atualizar todos os sprites, então é melhor assim
 static OBJ_ATTR obj_buffer[128];
-static OBJ_ATTR *obj_letters    = obj_buffer;
-static OBJ_ATTR *obj_buttons    = obj_buffer + NUM_LETTERS;
-static OBJ_ATTR *obj_selector   = obj_buffer + NUM_LETTERS + NUM_BUTTONS;
-static OBJ_ATTR *obj_cursor		= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1;
-
-
-
-// Salvam o id das letras e sua paleta antes que os sprites sejam atualizados
-static char letter_buffer[LETTER_LENGTH_Y][LETTER_LENGTH_X] = { SYMBOL_EMPTY };
-static wordlePalBank_t letter_pal_buffer[LETTER_LENGTH_Y][LETTER_LENGTH_X] = { PAL_EMPTY };
-
-
-
-// A palavra que se está tentando achar
-static char solution[WORD_LENGTH] = "laugh"; // TODO: aleatorizar solução
-
-
-
-
-
-
-
-
-
-
-// Trazendo as constantes que guardam as palavras
-extern const char wordle_word_bank_5[WORDLE_WORD_BANK_5_LENGTH][5];
-extern const char wordle_word_valid_5[WORDLE_WORD_VALID_5_LENGTH][5];
+static OBJ_ATTR *obj_letters    = obj_buffer;									// NUM_LETTERS
+static OBJ_ATTR *obj_buttons    = obj_buffer + NUM_LETTERS;						// NUM_BUTTONS
+static OBJ_ATTR *obj_selector   = obj_buffer + NUM_LETTERS + NUM_BUTTONS;		// 1
+static OBJ_ATTR *obj_cursor		= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1;	// 1
+static OBJ_ATTR *obj_results	= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 2;	// NUM_RESULTS
 
 
 
@@ -160,10 +160,6 @@ int init_wordle_game(void)
 	// Ativando os sprites
 	REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_2D;
 
-
-
-
-
 	// Esconde todos os sprites
 	oam_init(obj_buffer, 128);
 
@@ -171,17 +167,55 @@ int init_wordle_game(void)
 
 
 
-	// Copiando a paleta 5 vezes
-	for (int i = 0; i < 5; i++)
+
+
+
+
+
+	// Salva as letras junto com suas paletas antes que os sprites sejam atualizados
+	// Isso é basicamente fazer um buffer do buffer mas é mais simples do que acessar
+	// o valores dos sprites em cada operação
+	letterInfo_t letter_info[LETTER_LENGTH_Y][LETTER_LENGTH_X] = { 0 };
+
+
+
+
+
+	// A palavra que se está tentando achar
+	char solution[WORD_LENGTH] = {0};
+
+	// Selecionando a palavra a ser resolvida aleatoriamente da lista de palavras mais comuns
+	strncpy(solution, wordle_word_bank[rand() % WORDLE_WORD_BANK_LENGTH], WORD_LENGTH);
+
+
+
+
+
+	// Essa variável será usada para saber qual letra está selecionada
+	POINT selector_pos = {0, 0};
+
+	// Essa variável será usada para saber qual letra será escrita
+	POINT cursor_pos = {0, 0};
+
+
+
+
+
+
+
+
+
+
+	// Copiando a paleta várias vezes
+	for (int i = 0; i < NUM_PALETTES; i++)
 		memcpy32(pal_obj_bank[i], SP_WordlePal, 8); // 8 words = 32 bytes = 16 cores
 
 	pal_obj_bank[PAL_EMPTY][3] = COLOR_BLACK;
 	pal_obj_bank[PAL_CORRECT][3] = COLOR_GREEN;
 	pal_obj_bank[PAL_CLOSE][3] = COLOR_YELLOW;
-	pal_obj_bank[PAL_INCORRECT][3] = COLOR_RED;
-	pal_obj_bank[PAL_BUTTON][3] = COLOR_BLUE;
-
-
+	pal_obj_bank[PAL_INCORRECT][3] = COLOR_GREY;
+	pal_obj_bank[PAL_BUTTON][3] = COLOR_LIGHTGREY;
+	pal_obj_bank[PAL_RESULT][3] = COLOR_BLUE;
 
 
 
@@ -244,6 +278,30 @@ int init_wordle_game(void)
 
 
 
+	// Inicializando os resultados
+	for (int i = 0; i < NUM_RESULTS; i++)
+	{
+		obj_set_attr(
+			obj_results + i,
+			ATTR0_SQUARE,
+			ATTR1_SIZE_16,
+			ATTR2_PALBANK(PAL_RESULT) | ATTR2_ID(get_sprite_id(solution[i] - 'a' + 1))
+		);
+
+		obj_set_pos(
+			// Transforma o índice linear dos resultado em coordenadas bidimensionais
+			obj_results + i,
+			(i * RESULT_SIZE_X) % (RESULT_LENGTH_X * RESULT_SIZE_X) + RESULT_OFFSET_X,
+			RESULT_OFFSET_Y + (i / RESULT_LENGTH_X) * RESULT_SIZE_Y
+		);
+
+		obj_hide(obj_results + i);
+	}
+
+
+
+
+
 	// Inicializando o seletor
 	obj_set_attr(
 		obj_selector,
@@ -284,25 +342,16 @@ int init_wordle_game(void)
 
 
 
-	// Essa variável será usada para saber qual letra está selecionada
-	POINT selector_pos = {0, 0};
-
-	// Essa variável será usada para saber qual letra será escrita
-	POINT cursor_pos = {0, 0};
-
-
-
-
-
 	while(true)
 	{
+		int correct_count = 0;
+
 		key_poll();
 
 
 
 
 
-		// Quando é apertado o botão A adiciona-se a letra selecionada
 		if (key_hit(KEY_A) || key_hit(KEY_B) || key_hit(KEY_START))
 		{
 			int selector_index = selector_pos.x + selector_pos.y * BUTTON_LENGTH_X + 1;
@@ -314,41 +363,36 @@ int init_wordle_game(void)
 				if (cursor_pos.x > 0)
 				{
 					cursor_pos.x--;
-					letter_buffer[cursor_pos.y][cursor_pos.x] = SYMBOL_EMPTY;
+					letter_info[cursor_pos.y][cursor_pos.x].letter = SYMBOL_EMPTY;
 				}
 			}
 			else if ((key_hit(KEY_A) && selector_index == SYMBOL_ENTER) || key_hit(KEY_START))
 			{
-				bool is_valid = false;
-
-				// Compara a palavra guardada com todas as palavras válidas
-				for (int i = 0; i < WORDLE_WORD_VALID_LENGTH; i++)
-				{
-					if (strncmp(letter_buffer[cursor_pos.y], wordle_word_valid[i], WORD_LENGTH) == 0)
-					{
-						is_valid = true;
-						break;
-					}
-				}
-
+				// Move uma linha para baixo se estiver na última letra
 				// Se o cursor estiver no final da palavra e não é a última linha e a palavra é válida então a linha é finalizada
-				if (is_valid && cursor_pos.x == LETTER_LENGTH_X && cursor_pos.y < LETTER_LENGTH_Y - 1)
+				if (cursor_pos.x == LETTER_LENGTH_X && cursor_pos.y < LETTER_LENGTH_Y)
 				{
-					wordle_compare(letter_pal_buffer[cursor_pos.y], solution, letter_buffer[cursor_pos.y]);
+					if (is_word_valid(letter_info[cursor_pos.y]))
+					{
+						correct_count = wordle_compare(letter_info[cursor_pos.y], solution);
 
-					cursor_pos.x = 0;
-					cursor_pos.y++;
+						update_buttons(obj_buttons, letter_info[cursor_pos.y], solution);
+
+						cursor_pos.x = 0;
+						cursor_pos.y++;
+					}
 				}
 			}
 			else if (key_hit(KEY_A)) {
 				// Adicionar a letra selecionada
-				if (cursor_pos.x <= LETTER_LENGTH_X - 1)
+				if (cursor_pos.x <= LETTER_LENGTH_X - 1 && cursor_pos.y < LETTER_LENGTH_Y)
 				{
-					letter_buffer[cursor_pos.y][cursor_pos.x] = selector_index - 1 + 'a';
+					letter_info[cursor_pos.y][cursor_pos.x].letter = selector_index - 1 + 'a';
 					cursor_pos.x++;
 				}
 			}
 		}
+
 
 
 
@@ -369,15 +413,13 @@ int init_wordle_game(void)
 
 		obj_set_pos(
 			// Transforma o índice linear do seletor em coordenadas bidimensionais
-			// Limita o seletor dentro das bordas dos botões
 			obj_selector,
 			BUTTON_OFFSET_X + BUTTON_SIZE_X * selector_pos.x,
 			BUTTON_OFFSET_Y + BUTTON_SIZE_Y * selector_pos.y
 		);
 
 		obj_set_pos(
-			// Transforma o índice linear do seletor em coordenadas bidimensionais
-			// Limita o seletor dentro das bordas dos botões
+			// Transforma o índice linear do cursor em coordenadas bidimensionais
 			obj_cursor,
 			LETTER_OFFSET_X + LETTER_SIZE_X * cursor_pos.x,
 			LETTER_OFFSET_Y + LETTER_SIZE_Y * cursor_pos.y
@@ -385,7 +427,28 @@ int init_wordle_game(void)
 
 
 
-		update_letters(obj_letters, (char *)letter_buffer, (wordlePalBank_t *)letter_pal_buffer);
+		update_letters(obj_letters, (letterInfo_t *)letter_info);
+
+
+
+
+
+		// Se o jogador acerta tudo ou chegar na última tentativa o jogo acaba
+		if (correct_count == NUM_RESULTS || cursor_pos.y == LETTER_LENGTH_Y)
+		{
+			for (int i = 0; i < NUM_RESULTS; i++)
+			{
+				obj_unhide(obj_results + i, ATTR0_REG);
+			}
+
+			VBlankIntrWait();
+			obj_copy(obj_mem, obj_buffer, 128);
+
+			VBlankIntrDelay(120);
+			key_wait_till_hit(KEY_ANY);
+
+			return 0; // FIXME: Retornar o número de tentativas
+		}
 
 
 
@@ -420,27 +483,27 @@ static int get_sprite_id(int index)
 	+------------------------------------------------+
 	*/
 
-	return index * 2 + 32 * (index / 16);
+	return 2 * (index + 16 * (index / 16));
 }
 
 
 
 
 
-static void update_letters(OBJ_ATTR *obj_letters, char *letter_buffer, wordlePalBank_t *letter_pal_buffer)
+static void update_letters(OBJ_ATTR *obj_letters, letterInfo_t *letter_info)
 {
 	// Atualiza os ids dos sprites a partir do buffer
 	for (int i = 0; i < NUM_LETTERS; i++)
 	{
 		int letter_index = 0;
 
-		if (letter_buffer[i] != SYMBOL_EMPTY)
-			letter_index = letter_buffer[i] + 1 - 'a';
+		if (letter_info[i].letter != SYMBOL_EMPTY)
+			letter_index = letter_info[i].letter + 1 - 'a';
 
 		int id = get_sprite_id(letter_index);
 
 		BFN_SET(obj_letters[i].attr2, id, ATTR2_ID);
-		BFN_SET(obj_letters[i].attr2, letter_pal_buffer[i], ATTR2_PALBANK);
+		BFN_SET(obj_letters[i].attr2, letter_info[i].pal, ATTR2_PALBANK);
 	}
 }
 
@@ -448,32 +511,118 @@ static void update_letters(OBJ_ATTR *obj_letters, char *letter_buffer, wordlePal
 
 
 
-static void wordle_compare(wordlePalBank_t *letter_pal_buffer, char *solution, char* word)
+static int wordle_compare(letterInfo_t *word, char *solution)
 {
-	unsigned char contagem[NUM_POSSIBLE_LETTERS] = {0};
+	int letter_count[NUM_ALPHABET] = {0};
+	int correct_count = 0;
 
 	// Salva a quantidade de letras
-    for (int i = 0; i < WORD_LENGTH; i++) {
-        contagem[solution[i] - 'a']++;
+    for (int i = 0; i < WORD_LENGTH; i++)
+	{
+        letter_count[solution[i] - 'a']++;
+
+		if (word[i].letter == solution[i]) {
+			// Se a letra for igual está correto
+			word[i].pal = PAL_CORRECT;
+			letter_count[word[i].letter - 'a']--;
+			correct_count++;
+		}
     }
 
-    if (strncmp(solution, word, WORD_LENGTH) == 0) {
-		// A palavra está correta TODO
-        return;
-    } else {
-        for (int i = 0; i < WORD_LENGTH; i++) {
-            if (word[i] == solution[i]) {
-				// Se a letra for igual está correto
-                letter_pal_buffer[i] = PAL_CORRECT;
-                contagem[word[i] - 'a']--;
-            } else if (contagem[word[i] - 'a'] > 0) {
+	// Esse loop precisa ser separado em dois porque as letras nas posições
+	// corretas têm prioridade sobre as que existem mas estão na posição errada
+	for (int i = 0; i < WORD_LENGTH; i++) {
+		if (word[i].letter != solution[i])
+		{
+			if (letter_count[word[i].letter - 'a'] > 0) {
 				// Se a letra for diferente mas ela existe na solução está perto
-                letter_pal_buffer[i] = PAL_CLOSE;
-                contagem[word[i] - 'a']--;
-            } else {
+				word[i].pal = PAL_CLOSE;
+				letter_count[word[i].letter - 'a']--;
+			} else {
 				// Senão a palavra não está na solução
-                letter_pal_buffer[i] = PAL_INCORRECT;
-            }
-        }
+				word[i].pal = PAL_INCORRECT;
+			}
+		}
+	}
+
+	// Retorna a quantidade de letras corretas existem na palavra
+	return correct_count;
+}
+
+
+
+
+
+// Utiliza pesquisa binária para encontrar a palavra mais rapidamente
+// Isso só é possível se as palavras estiverem ordenadas
+static bool is_word_valid(letterInfo_t *word)
+{
+	int left = 0;
+	int right = WORDLE_WORD_VALID_LENGTH - 1;
+
+	while (left <= right)
+	{
+		int middle = (left + right) / 2;
+
+		int result = 0;
+
+		for (int i = 0; i < WORD_LENGTH; i++)
+		{
+			if (word[i].letter > wordle_word_valid[middle][i])
+			{
+				result = 1;
+				break;
+			}
+			else if (word[i].letter < wordle_word_valid[middle][i])
+			{
+				result = -1;
+				break;
+			}
+		}
+
+		switch (result)
+		{
+			case  0: return true;
+			case  1: left  = middle + 1; break;
+			case -1: right = middle - 1; break;
+		}
+	}
+
+	return false;
+}
+
+
+
+
+
+static void update_buttons(OBJ_ATTR *obj_buttons, letterInfo_t *letter_info, char *solution)
+{
+	int letter_count[NUM_ALPHABET] = {0};
+
+	// Salva a quantidade de letras
+    for (int i = 0; i < WORD_LENGTH; i++)
+	{
+        letter_count[solution[i] - 'a']++;
+
+		if (letter_info[i].letter == solution[i]) {
+			// Se a letra for igual está correto
+			BFN_SET(obj_buttons[letter_info[i].letter - 'a'].attr2, PAL_CORRECT, ATTR2_PALBANK);
+		}
     }
+
+	// Esse loop precisa ser separado em dois porque as letras nas posições
+	// corretas têm prioridade sobre as que existem mas estão na posição errada
+	for (int i = 0; i < WORD_LENGTH; i++) {
+		if (letter_info[i].letter != solution[i])
+		{
+			if (letter_count[letter_info[i].letter - 'a'] > 0) {
+				// Se a letra for diferente mas ela existe na solução está perto
+				if (BFN_GET(obj_buttons[letter_info[i].letter - 'a'].attr2, ATTR2_PALBANK) != PAL_CORRECT)
+					BFN_SET(obj_buttons[letter_info[i].letter - 'a'].attr2, PAL_CLOSE, ATTR2_PALBANK);
+			} else {
+				// Senão a palavra não está na solução
+				BFN_SET(obj_buttons[letter_info[i].letter - 'a'].attr2, PAL_INCORRECT, ATTR2_PALBANK);
+			}
+		}
+	}
 }
