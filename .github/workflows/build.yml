@@ -9,10 +9,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
+
+      - name: Cache devkitPro
+        id: cache-devkitpro
+        uses: actions/cache@v3
+        with:
+          path: /opt/devkitpro
+          key: ${{ runner.os }}-devkitpro
+
       - name: Install devkitPro
+        if: steps.cache-devkitpro.outputs.cache-hit != 'true'
         run: sudo ./scripts/install_devkitPro.sh
+
       - name: Build Arcade Mania
         run: make
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
