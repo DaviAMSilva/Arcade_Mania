@@ -1,4 +1,5 @@
-name: Build
+name: Build and release
+
 on:
   push:
     branches:
@@ -7,26 +8,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: daviamsilva/arcade_mania
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
-      - name: Cache devkitPro
-        id: cache-devkitpro
-        uses: actions/cache@v3
-        with:
-          path: /opt/devkitpro
-          key: ${{ runner.os }}-devkitpro
-
-      - name: Install devkitPro
-        if: steps.cache-devkitpro.outputs.cache-hit != 'true'
-        run: sudo ./scripts/install_devkitPro.sh
-
-      - name: Build Arcade Mania
+      - name: Build bin/arcade_mania.gba
         run: make
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          title: "Arcade Mania"
           automatic_release_tag: "latest"
           prerelease: false
           files: |

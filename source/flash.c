@@ -1,7 +1,7 @@
 #include <tonc.h>
 /**
  * Essa funcionalidade só foi possível de ser implementada por causa da excelente informação
- * técnica fornecidade pelo site: problemkaputt.de/gbatek.htm criado por Martin Korth
+ * técnica fornecida pelo site: problemkaputt.de/gbatek.htm criado por Martin Korth
  * disponível em: https://problemkaputt.de/gbatek.htm#gbacartbackupflashrom
  */
 
