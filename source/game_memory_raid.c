@@ -134,7 +134,7 @@ static int get_angle_index		(int dx, int dy);
 static int interpolate_angles	(int a1, int a2, float t);
 
 static void show_warnings		(int *phases_dirs, int *phases_pals, int *num_phases);
-static int shoot_bullets		(int *phases_dirs, int *phases_pals, int *num_phases);
+static bool shoot_bullets		(int *phases_dirs, int *phases_pals, int *num_phases);
 
 static void update_shield		(void);
 static void update_background	(void);
@@ -321,7 +321,7 @@ int init_memory_raid_game()
 
 
 
-	while (1)
+	while (true)
 	{
 		// Dá tempo de respirar
 		for (int i = 0; i < BREATHING_TIMER; i++)
@@ -341,6 +341,8 @@ int init_memory_raid_game()
 		// Realiza os movimentos em si
 		if (shoot_bullets(phases_dirs, phases_pals, &num_phases))
 		{
+			fade_to_black();
+
 			// O jogo acabou
 			return internal_score;
 		}
@@ -431,7 +433,7 @@ static void show_warnings(int *phases_dirs, int *phases_pals, int *num_phases)
 
 
 
-static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
+static bool shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 {
 	for (int cur_phase = 0; cur_phase < *num_phases; cur_phase++)
 	{
@@ -471,8 +473,6 @@ static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 		{
 			// Som de morte
 			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_F, 3);
-
-			fade_to_black();
 
 			return 1;
 		}

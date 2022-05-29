@@ -52,17 +52,15 @@
 
 
 
-#define COLOR_GREEN		RGB15( 0,	31,	 0)
-#define COLOR_RED		RGB15(31,	 0,	 0)
-#define COLOR_BLUE		RGB15( 0,	 0,	31)
-#define COLOR_YELLOW	RGB15(31,	31,	 0)
-#define COLOR_PURPLE	RGB15(31,	 0,	31)
-#define COLOR_CYAN		RGB15( 0,	31,	31)
+#define COLOR_GREEN		RGB15(10, 17,  9) // #538d4e
+#define COLOR_RED		RGB15(31,  0,  0) // #7f0000
+#define COLOR_BLUE		RGB15(16, 23, 30) // #85c0f9
+#define COLOR_YELLOW	RGB15(22, 19,  7) // #b59f3b 
 
-#define COLOR_BLACK		RGB15( 0,	 0,	 0)
-#define COLOR_GREY		RGB15(10,	10,	10)
-#define COLOR_LIGHTGREY	RGB15(20,	20,	20)
-#define COLOR_WHITE		RGB15(31,	31,	31)
+#define COLOR_BLACK		RGB15( 2,  2,  2) // #121213
+#define COLOR_GREY		RGB15( 7,  7,  7) // #3a3a3c
+#define COLOR_LIGHTGREY	RGB15(16, 16, 16) // #818384
+#define COLOR_WHITE		RGB15(31, 31, 31) // #ffffff
 
 
 
@@ -115,11 +113,11 @@ typedef struct LetterInfo
 
 
 
-static int get_sprite_id(int index);
-static void update_letters(OBJ_ATTR *obj_letters, letterInfo_t *letter_info);
-static void update_buttons(OBJ_ATTR *obj_buttons, letterInfo_t *letter_info, char *solution);
-static int wordle_compare(letterInfo_t *word, char *solution);
-static bool is_word_valid(letterInfo_t *word);
+static int get_sprite_id	(int index);
+static void update_letters	(OBJ_ATTR *obj_letters, letterInfo_t *letter_info);
+static void update_buttons	(OBJ_ATTR *obj_buttons, letterInfo_t *letter_info, char *solution);
+static int wordle_compare	(letterInfo_t *word, char *solution);
+static bool is_word_valid	(letterInfo_t *word);
 
 
 
@@ -138,8 +136,7 @@ static OBJ_ATTR obj_buffer[128];
 static OBJ_ATTR *obj_letters    = obj_buffer;									// NUM_LETTERS
 static OBJ_ATTR *obj_buttons    = obj_buffer + NUM_LETTERS;						// NUM_BUTTONS
 static OBJ_ATTR *obj_selector   = obj_buffer + NUM_LETTERS + NUM_BUTTONS;		// 1
-static OBJ_ATTR *obj_cursor		= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1;	// 1
-static OBJ_ATTR *obj_results	= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 2;	// NUM_RESULTS
+static OBJ_ATTR *obj_results	= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1;	// NUM_RESULTS
 
 
 
@@ -159,6 +156,9 @@ int init_wordle_game(void)
 
 	// Ativando os sprites
 	REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_2D;
+
+	// Colorindo o fundo
+	pal_bg_mem[0] = COLOR_BLACK;
 
 	// Esconde todos os sprites
 	oam_init(obj_buffer, 128);
@@ -210,12 +210,21 @@ int init_wordle_game(void)
 	for (int i = 0; i < NUM_PALETTES; i++)
 		memcpy32(pal_obj_bank[i], SP_WordlePal, 8); // 8 words = 32 bytes = 16 cores
 
+	// Colocando as cores dos fundos
 	pal_obj_bank[PAL_EMPTY][3] = COLOR_BLACK;
 	pal_obj_bank[PAL_CORRECT][3] = COLOR_GREEN;
 	pal_obj_bank[PAL_CLOSE][3] = COLOR_YELLOW;
 	pal_obj_bank[PAL_INCORRECT][3] = COLOR_GREY;
 	pal_obj_bank[PAL_BUTTON][3] = COLOR_LIGHTGREY;
 	pal_obj_bank[PAL_RESULT][3] = COLOR_BLUE;
+
+	// Colocando as cores das bordas
+	pal_obj_bank[PAL_EMPTY][4] = COLOR_GREY;
+	pal_obj_bank[PAL_CORRECT][4] = COLOR_GREEN;
+	pal_obj_bank[PAL_CLOSE][4] = COLOR_YELLOW;
+	pal_obj_bank[PAL_INCORRECT][4] = COLOR_GREY;
+	pal_obj_bank[PAL_BUTTON][4] = COLOR_LIGHTGREY;
+	pal_obj_bank[PAL_RESULT][4] = COLOR_BLUE;
 
 
 
@@ -322,37 +331,17 @@ int init_wordle_game(void)
 
 
 
-	// Inicializando o cursor
-	obj_set_attr(
-		obj_cursor,
-		ATTR0_SQUARE,
-		ATTR1_SIZE_16,
-		ATTR2_PALBANK(PAL_EMPTY) | ATTR2_ID(get_sprite_id(SYMBOL_SELECTOR))
-	);
-
-	obj_set_pos(
-		obj_cursor,
-		LETTER_OFFSET_X,
-		LETTER_OFFSET_Y
-	);
-
-	obj_unhide(obj_cursor, ATTR0_REG);
-
-
-
-
-
-	while(true)
+	while (true)
 	{
 		int correct_count = 0;
 
+
+
+
 		key_poll();
 
-
-
-
-
-		if (key_hit(KEY_A) || key_hit(KEY_B) || key_hit(KEY_START))
+		// Comportamento quando qualquer botão é pressionado
+		if (key_hit(KEY_FIRE) || key_hit(KEY_SPECIAL))
 		{
 			int selector_index = selector_pos.x + selector_pos.y * BUTTON_LENGTH_X + 1;
 
@@ -360,7 +349,7 @@ int init_wordle_game(void)
 			{
 				// Remover a letra se o cursor não estiver na posição 0,0
 				// Mover o cursor para a linha anterior caso necessário
-				if (cursor_pos.x > 0)
+				if (cursor_pos.x > 0 && cursor_pos.y < LETTER_LENGTH_Y)
 				{
 					cursor_pos.x--;
 					letter_info[cursor_pos.y][cursor_pos.x].letter = SYMBOL_EMPTY;
@@ -381,6 +370,19 @@ int init_wordle_game(void)
 						cursor_pos.x = 0;
 						cursor_pos.y++;
 					}
+				}
+			}
+			else if (key_hit(KEY_SELECT))
+			{
+				// Apaga todas as letras da linha atual
+				if (cursor_pos.x > 0 && cursor_pos.y < LETTER_LENGTH_Y)
+				{
+					for (int i = 0; i < LETTER_LENGTH_X; i++)
+					{
+						letter_info[cursor_pos.y][i].letter = SYMBOL_EMPTY;
+					}
+
+					cursor_pos.x = 0;
 				}
 			}
 			else if (key_hit(KEY_A)) {
@@ -411,22 +413,18 @@ int init_wordle_game(void)
 			selector_pos.y = (selector_pos.y + BUTTON_LENGTH_Y) % BUTTON_LENGTH_Y;
 		}
 
+		// Transforma o índice linear do seletor em coordenadas bidimensionais
 		obj_set_pos(
-			// Transforma o índice linear do seletor em coordenadas bidimensionais
 			obj_selector,
 			BUTTON_OFFSET_X + BUTTON_SIZE_X * selector_pos.x,
 			BUTTON_OFFSET_Y + BUTTON_SIZE_Y * selector_pos.y
 		);
 
-		obj_set_pos(
-			// Transforma o índice linear do cursor em coordenadas bidimensionais
-			obj_cursor,
-			LETTER_OFFSET_X + LETTER_SIZE_X * cursor_pos.x,
-			LETTER_OFFSET_Y + LETTER_SIZE_Y * cursor_pos.y
-		);
 
 
 
+
+		// Atualiza o buffer de objetos de acordo com as informações das letras
 		update_letters(obj_letters, (letterInfo_t *)letter_info);
 
 
@@ -434,7 +432,7 @@ int init_wordle_game(void)
 
 
 		// Se o jogador acerta tudo ou chegar na última tentativa o jogo acaba
-		if (correct_count == NUM_RESULTS || cursor_pos.y == LETTER_LENGTH_Y)
+		if (correct_count == WORD_LENGTH || cursor_pos.y == LETTER_LENGTH_Y)
 		{
 			for (int i = 0; i < NUM_RESULTS; i++)
 			{
@@ -444,10 +442,10 @@ int init_wordle_game(void)
 			VBlankIntrWait();
 			obj_copy(obj_mem, obj_buffer, 128);
 
-			VBlankIntrDelay(120);
-			key_wait_till_hit(KEY_ANY);
+			fade_to_black();
 
-			return 0; // FIXME: Retornar o número de tentativas
+			// Retorna 0 se perdeu, senão retorna a quantidade de tentativas
+			return correct_count == WORD_LENGTH ? cursor_pos.y : 0;
 		}
 
 
@@ -456,6 +454,9 @@ int init_wordle_game(void)
 		obj_copy(obj_mem, obj_buffer, 128);
 	}
 
+
+
+	// Não deve chegar aqui
 	return 0;
 }
 

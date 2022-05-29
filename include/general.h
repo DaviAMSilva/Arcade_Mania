@@ -1,8 +1,6 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
-#include <tonc.h>
-
 #define NUM_GAMES 3
 
 #define SAVE_CODE 0xDA710001 // Serve como identificador da versão do save

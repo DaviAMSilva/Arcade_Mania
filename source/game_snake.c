@@ -289,7 +289,7 @@ int init_snake_game(void)
 
 
 
-		// Faz o jogo ficar um pouco mais aleatório
+		// Torna o jogo um pouco mais aleatório
 		srand(rand() + dir.x + dir.y);
 
 
