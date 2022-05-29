@@ -37,4 +37,3 @@ A linguagem C é uma das mais usadas no mundo e é usada no nosso curso para ens
 ## Fontes de Pesquisa
 - Tutorial: [Tonc](https://www.coranac.com/tonc/text/toc.htm)
 - Especificações técnicas: [GBATek](http://problemkaputt.de/gbatek.htm), [CowBite](https://www.cs.rit.edu/~tjh8300/CowBite/CowBiteSpec.htm)
-- ~~[Programming The Nintendo Game Boy Advance: The Unofficial Guide](http://www.freeinfosociety.com/media/pdf/2901.pdf)~~
