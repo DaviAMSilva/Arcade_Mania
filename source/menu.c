@@ -63,16 +63,15 @@ gameIndex_t init_menu(void)
 
 
 	// Definindo os mapas
-	REG_BG0CNT = BG_CBB(0) | BG_SBB(24)	| BG_REG_64x64 | BG_8BPP | BG_PRIO(1);
-	REG_BG1CNT = BG_CBB(2) | BG_SBB(28)	| BG_REG_32x32 | BG_8BPP | BG_PRIO(0);
+	REG_BG0CNT = BG_CBB(0) | BG_SBB(24)	| BG_REG_64x32 | BG_8BPP | BG_PRIO(1);
+	REG_BG1CNT = BG_CBB(2) | BG_SBB(26)	| BG_REG_32x32 | BG_8BPP | BG_PRIO(0);
 
 	// Copiando os tiles
 	memcpy32(tile8_mem[0], BG_Menu_GamesTiles, BG_Menu_GamesTilesLen / 4);
 	memcpy32(tile8_mem[2], BG_Menu_OverlayTiles, BG_Menu_OverlayTilesLen / 4);
 
 	// Copiando os mapas
-	// memcpy32(se_mem[24], BG_Menu_GamesMap, BG_Menu_GamesMapLen / 4);
-	memcpy32(se_mem[28], BG_Menu_OverlayMap, BG_Menu_OverlayMapLen / 4);
+	memcpy32(se_mem[26], BG_Menu_OverlayMap, BG_Menu_OverlayMapLen / 4);
 
 	// A paleta de cores é igual para os dois
 	memcpy32(pal_bg_mem, BG_Menu_OverlayPal, BG_Menu_OverlayPalLen / 4);

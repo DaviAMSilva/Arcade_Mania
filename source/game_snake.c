@@ -37,9 +37,9 @@
 
 
 
-#define asset_layer			se_mat[8]
-#define snake_layer			se_mat[9]
-#define background_layer	se_mat[10]
+#define asset_layer			(se_mat[8])
+#define snake_layer			(se_mat[9])
+#define background_layer	(se_mat[10])
 
 
 

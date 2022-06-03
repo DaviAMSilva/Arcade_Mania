@@ -46,21 +46,14 @@
 
 
 
-#define NUM_BUTTONS	BUTTON_LENGTH_X * BUTTON_LENGTH_Y
-#define NUM_LETTERS	WORD_LENGTH * NUM_ATTEMPTS
+#define NUM_BUTTONS	(BUTTON_LENGTH_X * BUTTON_LENGTH_Y)
+#define NUM_LETTERS	(WORD_LENGTH * NUM_ATTEMPTS)
 #define NUM_RESULTS	WORD_LENGTH
 
 
 
-#define COLOR_GREEN		RGB15(10, 17,  9) // #538d4e
-#define COLOR_RED		RGB15(31,  0,  0) // #7f0000
-#define COLOR_BLUE		RGB15(16, 23, 30) // #85c0f9
-#define COLOR_YELLOW	RGB15(22, 19,  7) // #b59f3b 
-
-#define COLOR_BLACK		RGB15( 2,  2,  2) // #121213
-#define COLOR_GREY		RGB15( 7,  7,  7) // #3a3a3c
-#define COLOR_LIGHTGREY	RGB15(16, 16, 16) // #818384
-#define COLOR_WHITE		RGB15(31, 31, 31) // #ffffff
+#define SELECTOR_SPEED_X	(BUTTON_SIZE_X / 4)
+#define SELECTOR_SPEED_Y	(BUTTON_SIZE_Y / 4)
 
 
 
@@ -79,6 +72,7 @@ typedef enum WordlePalBank
 	PAL_INCORRECT,
 	PAL_BUTTON,
 	PAL_RESULT,
+	PAL_SELECTOR,
 } wordlePalBank_t;
 
 typedef enum WordleSpecialSymbol
@@ -153,12 +147,13 @@ int init_wordle_game(void)
 
 	// Copia as informações necessárias sobre os objetos
 	memcpy32(tile_mem_obj, SP_WordleTiles, SP_WordleTilesLen / 4);
+	memcpy32(pal_obj_mem, SP_WordlePal, SP_WordlePalLen / 4);
 
 	// Ativando os sprites
 	REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_2D;
 
 	// Colorindo o fundo
-	pal_bg_mem[0] = COLOR_BLACK;
+	pal_bg_mem[0] = RGB15(2,  2,  2); // #121213
 
 	// Esconde todos os sprites
 	oam_init(obj_buffer, 128);
@@ -194,37 +189,12 @@ int init_wordle_game(void)
 	// Essa variável será usada para saber qual letra está selecionada
 	POINT selector_pos = {0, 0};
 
+	// Essas variáveis servem para animar o seletor de um lugar para outro
+	POINT selector_current_pos = {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
+	POINT selector_destination_pos = {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
+
 	// Essa variável será usada para saber qual letra será escrita
 	POINT cursor_pos = {0, 0};
-
-
-
-
-
-
-
-
-
-
-	// Copiando a paleta várias vezes
-	for (int i = 0; i < NUM_PALETTES; i++)
-		memcpy32(pal_obj_bank[i], SP_WordlePal, 8); // 8 words = 32 bytes = 16 cores
-
-	// Colocando as cores dos fundos
-	pal_obj_bank[PAL_EMPTY][3] = COLOR_BLACK;
-	pal_obj_bank[PAL_CORRECT][3] = COLOR_GREEN;
-	pal_obj_bank[PAL_CLOSE][3] = COLOR_YELLOW;
-	pal_obj_bank[PAL_INCORRECT][3] = COLOR_GREY;
-	pal_obj_bank[PAL_BUTTON][3] = COLOR_LIGHTGREY;
-	pal_obj_bank[PAL_RESULT][3] = COLOR_BLUE;
-
-	// Colocando as cores das bordas
-	pal_obj_bank[PAL_EMPTY][4] = COLOR_GREY;
-	pal_obj_bank[PAL_CORRECT][4] = COLOR_GREEN;
-	pal_obj_bank[PAL_CLOSE][4] = COLOR_YELLOW;
-	pal_obj_bank[PAL_INCORRECT][4] = COLOR_GREY;
-	pal_obj_bank[PAL_BUTTON][4] = COLOR_LIGHTGREY;
-	pal_obj_bank[PAL_RESULT][4] = COLOR_BLUE;
 
 
 
@@ -294,7 +264,7 @@ int init_wordle_game(void)
 			obj_results + i,
 			ATTR0_SQUARE,
 			ATTR1_SIZE_16,
-			ATTR2_PALBANK(PAL_RESULT) | ATTR2_ID(get_sprite_id(solution[i] - 'a' + 1))
+			ATTR2_PALBANK(PAL_RESULT) | ATTR2_ID(get_sprite_id(("troll")[i] - 'a' + 1))
 		);
 
 		obj_set_pos(
@@ -316,7 +286,7 @@ int init_wordle_game(void)
 		obj_selector,
 		ATTR0_SQUARE,
 		ATTR1_SIZE_16,
-		ATTR2_PALBANK(PAL_EMPTY) | ATTR2_ID(get_sprite_id(SYMBOL_SELECTOR))
+		ATTR2_PALBANK(PAL_SELECTOR) | ATTR2_ID(get_sprite_id(SYMBOL_SELECTOR))
 	);
 
 	obj_set_pos(
@@ -341,7 +311,7 @@ int init_wordle_game(void)
 		key_poll();
 
 		// Comportamento quando qualquer botão é pressionado
-		if (key_hit(KEY_FIRE) || key_hit(KEY_SPECIAL))
+		if (key_hit(KEY_FIRE | KEY_SPECIAL))
 		{
 			int selector_index = selector_pos.x + selector_pos.y * BUTTON_LENGTH_X + 1;
 
@@ -400,24 +370,29 @@ int init_wordle_game(void)
 
 
 		// Move o seletor para a esquerda ou direita
-		if (key_hit(KEY_LEFT) || key_hit(KEY_RIGHT))
+		if (key_hit(KEY_LEFT | KEY_RIGHT))
 		{
 			selector_pos.x += key_tri_horz();
-			selector_pos.x = (selector_pos.x + BUTTON_LENGTH_X) % BUTTON_LENGTH_X;
+			selector_pos.x = CLAMP(selector_pos.x, 0, BUTTON_LENGTH_X);
+			selector_destination_pos.x = BUTTON_OFFSET_X + selector_pos.x * BUTTON_SIZE_X;
 		}
 
 		// Move o seletor para cima ou baixo
-		if (key_hit(KEY_UP) || key_hit(KEY_DOWN))
+		if (key_hit(KEY_UP | KEY_DOWN))
 		{
 			selector_pos.y += key_tri_vert();
-			selector_pos.y = (selector_pos.y + BUTTON_LENGTH_Y) % BUTTON_LENGTH_Y;
+			selector_pos.y = CLAMP(selector_pos.y, 0, BUTTON_LENGTH_Y);
+			selector_destination_pos.y = BUTTON_OFFSET_Y + selector_pos.y * BUTTON_SIZE_Y;
 		}
 
-		// Transforma o índice linear do seletor em coordenadas bidimensionais
+		// Move o seletor da posição atual para a posição destino
+		selector_current_pos.x += SELECTOR_SPEED_X * SGN3(selector_destination_pos.x - selector_current_pos.x);
+		selector_current_pos.y += SELECTOR_SPEED_Y * SGN3(selector_destination_pos.y - selector_current_pos.y);
+
 		obj_set_pos(
 			obj_selector,
-			BUTTON_OFFSET_X + BUTTON_SIZE_X * selector_pos.x,
-			BUTTON_OFFSET_Y + BUTTON_SIZE_Y * selector_pos.y
+			selector_current_pos.x,
+			selector_current_pos.y
 		);
 
 
@@ -436,11 +411,14 @@ int init_wordle_game(void)
 		{
 			for (int i = 0; i < NUM_RESULTS; i++)
 			{
+				BFN_SET(obj_results[i].attr2, get_sprite_id(solution[i] - 'a' + 1), ATTR2_ID);
 				obj_unhide(obj_results + i, ATTR0_REG);
 			}
 
 			VBlankIntrWait();
 			obj_copy(obj_mem, obj_buffer, 128);
+
+			key_wait_till_hit(KEY_ANY);
 
 			fade_to_black();
 
