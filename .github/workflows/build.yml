@@ -1,4 +1,5 @@
-name: Build
+name: Build and release
+
 on:
   push:
     branches:
@@ -7,15 +8,17 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container: daviamsilva/arcade_mania
     steps:
-      - uses: actions/checkout@v2
-      - name: Install devkitPro
-        run: sudo ./scripts/install_devkitPro.sh
-      - name: Build Arcade Mania
+      - uses: actions/checkout@v3
+
+      - name: Build bin/arcade_mania.gba
         run: make
+
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          title: "Arcade Mania"
           automatic_release_tag: "latest"
           prerelease: false
           files: |
