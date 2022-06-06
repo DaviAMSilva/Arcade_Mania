@@ -201,19 +201,13 @@ static OBJ_AFFINE *obj_aff_buffer = (OBJ_AFFINE *)obj_buffer;
 
 
 
+
+
+
+
+
 // Guarda a pontuação
 static int internal_score = 0;
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -253,10 +247,10 @@ int init_memory_raid_game()
 
 
 	// Valores iniciais
-	shield	= (shield_t)	{{120 - 32, 80 - 32}, SHIELD_REG_BUF, SHIELD_AFF_BUF, CC0, CC0, phases_pals[0], phases_dirs[0]};
-	core	= (core_t)		{{120 - 16, 80 - 16}, CORE_REG_BUF, CORE_AFF_BUF, CC0, CC0, 0, 0};
-	warning	= (warning_t)	{{0,0}, WARNING_BUF, phases_pals[0], phases_dirs[0]};
-	bullet	= (bullet_t)	{bullet_starts[phases_dirs[0]], BULLET_BUF, phases_pals[0], phases_dirs[0]};
+	shield	= (shield_t)	{ {120 - 32, 80 - 32}, SHIELD_REG_BUF, SHIELD_AFF_BUF, CC0, CC0, phases_pals[0], phases_dirs[0] };
+	core	= (core_t)		{ {120 - 16, 80 - 16}, CORE_REG_BUF, CORE_AFF_BUF, CC0, CC0, 0, 0 };
+	warning	= (warning_t)	{ {0,0}, WARNING_BUF, phases_pals[0], phases_dirs[0] };
+	bullet	= (bullet_t)	{ bullet_starts[phases_dirs[0]], BULLET_BUF, phases_pals[0], phases_dirs[0] };
 
 
 
@@ -362,16 +356,6 @@ int init_memory_raid_game()
 		update_background();
 	}
 }
-
-
-
-
-
-
-
-
-
-
 
 
 

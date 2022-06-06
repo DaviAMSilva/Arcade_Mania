@@ -16,12 +16,6 @@
 
 
 
-#define WORD_LENGTH		5
-#define NUM_ATTEMPTS	6
-#define NUM_ALPHABET	26
-#define NUM_PALETTES	6
-
-
 
 #define LETTER_SIZE_X	16
 #define LETTER_SIZE_Y	16
@@ -46,14 +40,24 @@
 
 
 
-#define NUM_BUTTONS	(BUTTON_LENGTH_X * BUTTON_LENGTH_Y)
-#define NUM_LETTERS	(WORD_LENGTH * NUM_ATTEMPTS)
-#define NUM_RESULTS	WORD_LENGTH
+#define ANIMATION_DURATION_REVEAL		24	// *5 = 2s
+#define ANIMATION_DURATION_HIGHLIGHT	30
 
 
 
 #define SELECTOR_SPEED_X	(BUTTON_SIZE_X / 4)
 #define SELECTOR_SPEED_Y	(BUTTON_SIZE_Y / 4)
+
+
+
+#define WORD_LENGTH		5
+#define NUM_ATTEMPTS	6
+#define NUM_ALPHABET	26
+#define NUM_PALETTES	6
+#define NUM_ANIMATIONS	5
+#define NUM_BUTTONS	(BUTTON_LENGTH_X * BUTTON_LENGTH_Y)
+#define NUM_LETTERS	(WORD_LENGTH * NUM_ATTEMPTS)
+#define NUM_RESULTS	WORD_LENGTH
 
 
 
@@ -107,7 +111,7 @@ typedef struct LetterInfo
 
 
 
-static int get_sprite_id	(int index);
+static int get_object_id	(int index);
 static void update_letters	(OBJ_ATTR *obj_letters, letterInfo_t *letter_info);
 static void update_buttons	(OBJ_ATTR *obj_buttons, letterInfo_t *letter_info, char *solution);
 static int wordle_compare	(letterInfo_t *word, char *solution);
@@ -122,15 +126,11 @@ static bool is_word_valid	(letterInfo_t *word);
 
 
 
-
-// Serve para guardar as informações dos sprites antes de enviar para tela
+// Serve para guardar as informações dos objetos antes de enviar para tela
 // Pode parecer ineficiente mas as vezes é possível não existir tempo suficiente
-// para atualizar todos os sprites, então é melhor assim
-static OBJ_ATTR obj_buffer[128];
-static OBJ_ATTR *obj_letters    = obj_buffer;									// NUM_LETTERS
-static OBJ_ATTR *obj_buttons    = obj_buffer + NUM_LETTERS;						// NUM_BUTTONS
-static OBJ_ATTR *obj_selector   = obj_buffer + NUM_LETTERS + NUM_BUTTONS;		// 1
-static OBJ_ATTR *obj_results	= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1;	// NUM_RESULTS
+// para atualizar todos os objetos, então é melhor assim
+static OBJ_ATTR obj_buffer[128];							// 128 objetos regulares
+static OBJ_AFFINE *obj_aff_buffer= (OBJ_AFFINE*)obj_buffer;	//  32 objetos afins
 
 
 
@@ -149,27 +149,43 @@ int init_wordle_game(void)
 	memcpy32(tile_mem_obj, SP_WordleTiles, SP_WordleTilesLen / 4);
 	memcpy32(pal_obj_mem, SP_WordlePal, SP_WordlePalLen / 4);
 
-	// Ativando os sprites
+	// Ativando os objetos
 	REG_DISPCNT = DCNT_OBJ | DCNT_OBJ_2D;
 
 	// Colorindo o fundo
 	pal_bg_mem[0] = RGB15(2,  2,  2); // #121213
 
-	// Esconde todos os sprites
+	// Inicializa todos os objetos
 	oam_init(obj_buffer, 128);
 
 
 
 
 
+	// Objetos regulares
+	OBJ_ATTR *obj_letters			= obj_buffer;												// NUM_LETTERS
+	OBJ_ATTR *obj_buttons			= obj_buffer + NUM_LETTERS;									// NUM_BUTTONS
+	OBJ_ATTR *obj_selector			= obj_buffer + NUM_LETTERS + NUM_BUTTONS;					// 1
+	OBJ_ATTR *obj_results			= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1;				// NUM_RESULTS
+	OBJ_ATTR *obj_animations_reg	= obj_buffer + NUM_LETTERS + NUM_BUTTONS + 1 + NUM_RESULTS;	// NUM_ANIMATIONS
+
+	// Objetos afins
+	// Ambos os objetos regulares quantos os afins estão presentes na mesma
+	// posição de memória em obj_mem, portanto usa-se o mesmo buffer
+	OBJ_AFFINE *obj_animations_aff	= obj_aff_buffer;											// NUM_ANIMATIONS
 
 
 
 
 
-	// Salva as letras junto com suas paletas antes que os sprites sejam atualizados
+
+
+
+
+
+	// Salva as letras junto com suas paletas antes que os objetos sejam atualizados
 	// Isso é basicamente fazer um buffer do buffer mas é mais simples do que acessar
-	// o valores dos sprites em cada operação
+	// o valores dos objetos em cada operação
 	letterInfo_t letter_info[LETTER_LENGTH_Y][LETTER_LENGTH_X] = { 0 };
 
 
@@ -180,7 +196,9 @@ int init_wordle_game(void)
 	char solution[WORD_LENGTH] = {0};
 
 	// Selecionando a palavra a ser resolvida aleatoriamente da lista de palavras mais comuns
-	strncpy(solution, wordle_word_bank[rand() % WORDLE_WORD_BANK_LENGTH], WORD_LENGTH);
+	int solution_index = rand() % WORDLE_WORD_BANK_LENGTH;
+	for (int i = 0; i < WORD_LENGTH; i++)
+		solution[i] = wordle_word_bank[solution_index][i];
 
 
 
@@ -190,11 +208,16 @@ int init_wordle_game(void)
 	POINT selector_pos = {0, 0};
 
 	// Essas variáveis servem para animar o seletor de um lugar para outro
-	POINT selector_current_pos = {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
-	POINT selector_destination_pos = {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
+	POINT selector_current_pos		= {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
+	POINT selector_destination_pos	= {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
 
 	// Essa variável será usada para saber qual letra será escrita
 	POINT cursor_pos = {0, 0};
+
+
+
+	// Usado para realizar a animação de revelar a palavra e chamar atenção
+	int animation_timer = -1;
 
 
 
@@ -214,7 +237,7 @@ int init_wordle_game(void)
 
 			obj_set_attr(
 				obj_letters + index,
-				ATTR0_SQUARE,
+				ATTR0_SQUARE | ATTR0_REG,
 				ATTR1_SIZE_16,
 				ATTR2_PALBANK(PAL_EMPTY) | ATTR2_ID(0) | ATTR2_PRIO(1)
 			);
@@ -224,8 +247,6 @@ int init_wordle_game(void)
 				(i * LETTER_SIZE_X) + LETTER_OFFSET_X,
 				(j * LETTER_SIZE_Y) + LETTER_OFFSET_Y
 			);
-
-			obj_unhide(obj_letters + index, ATTR0_REG);
 		}
 	}
 
@@ -238,9 +259,9 @@ int init_wordle_game(void)
 	{
 		obj_set_attr(
 			obj_buttons + i,
-			ATTR0_SQUARE,
+			ATTR0_SQUARE | ATTR0_REG,
 			ATTR1_SIZE_16,
-			ATTR2_PALBANK(PAL_BUTTON) | ATTR2_ID(get_sprite_id(i + 1)) | ATTR2_PRIO(1)
+			ATTR2_PALBANK(PAL_BUTTON) | ATTR2_ID(get_object_id(i + 1)) | ATTR2_PRIO(1)
 		);
 
 		obj_set_pos(
@@ -249,9 +270,19 @@ int init_wordle_game(void)
 			(i * BUTTON_SIZE_X) % (BUTTON_LENGTH_X * BUTTON_SIZE_X) + BUTTON_OFFSET_X,
 			BUTTON_OFFSET_Y + (i / BUTTON_LENGTH_X) * BUTTON_SIZE_Y
 		);
-
-		obj_unhide(obj_buttons + i, ATTR0_REG);
 	}
+
+
+
+
+
+	// Inicializando o seletor
+	obj_set_attr(
+		obj_selector,
+		ATTR0_Y(BUTTON_OFFSET_X) | ATTR0_SQUARE | ATTR0_REG,
+		ATTR1_X(BUTTON_OFFSET_Y) | ATTR1_SIZE_16,
+		ATTR2_PALBANK(PAL_SELECTOR) | ATTR2_ID(get_object_id(SYMBOL_SELECTOR))
+	);
 
 
 
@@ -262,9 +293,9 @@ int init_wordle_game(void)
 	{
 		obj_set_attr(
 			obj_results + i,
-			ATTR0_SQUARE,
+			ATTR0_SQUARE | ATTR0_HIDE,
 			ATTR1_SIZE_16,
-			ATTR2_PALBANK(PAL_RESULT) | ATTR2_ID(get_sprite_id(("troll")[i] - 'a' + 1))
+			ATTR2_PALBANK(PAL_RESULT) | ATTR2_ID(get_object_id(("troll")[i] - 'a' + 1))
 		);
 
 		obj_set_pos(
@@ -273,34 +304,33 @@ int init_wordle_game(void)
 			(i * RESULT_SIZE_X) % (RESULT_LENGTH_X * RESULT_SIZE_X) + RESULT_OFFSET_X,
 			RESULT_OFFSET_Y + (i / RESULT_LENGTH_X) * RESULT_SIZE_Y
 		);
-
-		obj_hide(obj_results + i);
 	}
 
 
 
 
 
-	// Inicializando o seletor
-	obj_set_attr(
-		obj_selector,
-		ATTR0_SQUARE,
-		ATTR1_SIZE_16,
-		ATTR2_PALBANK(PAL_SELECTOR) | ATTR2_ID(get_sprite_id(SYMBOL_SELECTOR))
-	);
-
-	obj_set_pos(
-		obj_selector,
-		BUTTON_OFFSET_X,
-		BUTTON_OFFSET_Y
-	);
-
-	obj_unhide(obj_selector, ATTR0_REG);
+	// Inicializando as animações
+	for (int i = 0; i < NUM_ANIMATIONS; i++)
+	{
+		obj_set_attr(
+			obj_animations_reg + i,
+			ATTR0_SQUARE | ATTR0_HIDE,
+			ATTR1_SIZE_16 | ATTR1_AFF_ID(i),
+			ATTR2_PALBANK(PAL_EMPTY) | ATTR2_ID(0)
+		);
+	}
 
 
 
 
 
+
+
+
+
+
+	// Loop principal do jogo
 	while (true)
 	{
 		int correct_count = 0;
@@ -411,7 +441,7 @@ int init_wordle_game(void)
 		{
 			for (int i = 0; i < NUM_RESULTS; i++)
 			{
-				BFN_SET(obj_results[i].attr2, get_sprite_id(solution[i] - 'a' + 1), ATTR2_ID);
+				BFN_SET(obj_results[i].attr2, get_object_id(solution[i] - 'a' + 1), ATTR2_ID);
 				obj_unhide(obj_results + i, ATTR0_REG);
 			}
 
@@ -429,7 +459,7 @@ int init_wordle_game(void)
 
 
 		VBlankIntrWait();
-		obj_copy(obj_mem, obj_buffer, 128);
+		oam_copy(obj_mem, obj_buffer, 128);
 	}
 
 
@@ -448,9 +478,9 @@ int init_wordle_game(void)
 
 
 // Retorna o índice do tile que contém o símbolo index
-static int get_sprite_id(int index)
+static int get_object_id(int index)
 {
-	// os sprites tem um tamanho de 16x16px (2x2 tiles), mas a imagem de tiles é composta de 16x16 tiles
+	// os objetos tem um tamanho de 16x16px (2x2 tiles), mas a imagem de tiles é composta de 16x16 tiles
 	// então é necessário utilizar os índices de tile das seguintes posições:
 	/*
 	+------------------------------------------------+
@@ -469,9 +499,14 @@ static int get_sprite_id(int index)
 
 
 
+
+
+
+
+
 static void update_letters(OBJ_ATTR *obj_letters, letterInfo_t *letter_info)
 {
-	// Atualiza os ids dos sprites a partir do buffer
+	// Atualiza os ids dos objetos a partir do buffer
 	for (int i = 0; i < NUM_LETTERS; i++)
 	{
 		int letter_index = 0;
@@ -479,12 +514,17 @@ static void update_letters(OBJ_ATTR *obj_letters, letterInfo_t *letter_info)
 		if (letter_info[i].letter != SYMBOL_EMPTY)
 			letter_index = letter_info[i].letter + 1 - 'a';
 
-		int id = get_sprite_id(letter_index);
+		int id = get_object_id(letter_index);
 
 		BFN_SET(obj_letters[i].attr2, id, ATTR2_ID);
 		BFN_SET(obj_letters[i].attr2, letter_info[i].pal, ATTR2_PALBANK);
 	}
 }
+
+
+
+
+
 
 
 
@@ -532,6 +572,11 @@ static int wordle_compare(letterInfo_t *word, char *solution)
 
 
 
+
+
+
+
+
 // Utiliza pesquisa binária para encontrar a palavra mais rapidamente
 // Isso só é possível se as palavras estiverem ordenadas
 static bool is_word_valid(letterInfo_t *word)
@@ -569,6 +614,11 @@ static bool is_word_valid(letterInfo_t *word)
 
 	return false;
 }
+
+
+
+
+
 
 
 
