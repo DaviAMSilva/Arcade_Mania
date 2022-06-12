@@ -93,9 +93,8 @@ all: $(TARGET).gba
 
 
 # Argumentos
-THUMB_ARGS 	:= -mthumb -mthumb-interwork
-CFLAGS		:= -Wall $(THUMB_ARGS) -O3
-LDFLAGS 	:= -Wall $(THUMB_ARGS) $(LIBRARIES) -specs=gba.specs
+CFLAGS		:= -Wall -mthumb -mthumb-interwork -O3
+LDFLAGS 	:= -Wall -mthumb -mthumb-interwork $(LIBRARIES) -specs=gba.specs
 
 
 
