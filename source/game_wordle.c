@@ -705,8 +705,8 @@ static int wordle_compare(symbolInfo_t *letter_info, symbolInfo_t *button_info, 
 				// Senão a palavra não está na solução
 				letter_info[i].pal = PAL_INCORRECT;
 
-				// Apenas atualizar o botão se ele não estiver correto
-				if (button_info[index].pal != PAL_CORRECT)
+				// Apenas atualizar o botão se ele não estiver correto ou perto
+				if (button_info[index].pal != PAL_CORRECT && button_info[index].pal != PAL_CLOSE)
 					button_info[index].pal = PAL_INCORRECT;
 			}
 		}
