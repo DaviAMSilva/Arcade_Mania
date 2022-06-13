@@ -37,14 +37,11 @@
 
 
 
-#define asset_layer			se_mat[8]
-#define snake_layer			se_mat[9]
-#define background_layer	se_mat[10]
+#define asset_layer			(se_mat[8])
+#define snake_layer			(se_mat[9])
+#define background_layer	(se_mat[10])
 
 
-
-static const COLOR rainbow_colors[]	= { CLR_RED, CLR_ORANGE, CLR_YELLOW, CLR_LIME, CLR_CYAN, CLR_BLUE, CLR_PURPLE, CLR_FUCHSIA };
-static const COLOR snake_colors[]	= { 576U, 825U, 5509U };
 
 
 
@@ -133,16 +130,6 @@ typedef struct Poos
 
 
 
-
-
-
-
-
-
-
-
-
-
 static void create_snake	(snake_t *snake);
 static void grow_snake		(snake_t *snake);
 static void draw_snake		(snake_t *snake);
@@ -174,6 +161,18 @@ static void draw_poos		(poos_t *poos);
 
 
 
+static const COLOR rainbow_colors[]	= { CLR_RED, CLR_ORANGE, CLR_YELLOW, CLR_LIME, CLR_CYAN, CLR_BLUE, CLR_PURPLE, CLR_FUCHSIA };
+static const COLOR snake_colors[]	= { 576U, 825U, 5509U };
+
+
+
+
+
+
+
+
+
+
 // Guarda a pontuação
 static int internal_score = 0;
 
@@ -189,6 +188,8 @@ static int internal_score = 0;
 int init_snake_game(void)
 {
 	REG_DISPCNT = DCNT_MODE0;
+
+
 
 	// Iniciando os backgrounds
 	REG_BG0CNT = BG_CBB(0) | BG_SBB(8)	| BG_REG_32x32 | BG_8BPP;
@@ -289,7 +290,7 @@ int init_snake_game(void)
 
 
 
-		// Faz o jogo ficar um pouco mais aleatório
+		// Torna o jogo um pouco mais aleatório
 		srand(rand() + dir.x + dir.y);
 
 
@@ -445,16 +446,6 @@ int init_snake_game(void)
 
 
 
-
-
-
-
-
-
-
-
-
-
 static void create_snake(snake_t *snake)
 {
 	// Configurações iniciais
@@ -542,6 +533,8 @@ static void create_poos(poos_t *poos)
 	poos->index = 0;
 }
 
+
+
 static void new_poo(poos_t *poos, s16 x, s16 y)
 {
 	poos->list[poos->index].pos = (POINT) { x, y };
@@ -549,6 +542,8 @@ static void new_poo(poos_t *poos, s16 x, s16 y)
 
 	poos->index = (poos->index + 1) % MAX_POOS_LENGTH; 
 }
+
+
 
 static bool hit_poos(snake_t *snake, poos_t *poos)
 {
@@ -559,6 +554,8 @@ static bool hit_poos(snake_t *snake, poos_t *poos)
 
 	return false;
 }
+
+
 
 static void draw_poos(poos_t *poos)
 {
@@ -588,11 +585,12 @@ static asset_t new_fruit(void)
 
 
 
-
 static asset_t new_bunny(void)
 {
 	return (asset_t) { {rand() % SCR_WT, rand() % SCR_HT}, (rand() % 10) ? SE_BUNNY1 : (rand() % 10) ? SE_BUNNY2 : SE_BUNNY3 };
 }
+
+
 
 static void move_bunny(asset_t *bunny)
 {
@@ -635,6 +633,8 @@ static void draw_asset(asset_t *asset)
 {
 	asset_layer[asset->pos.y][asset->pos.x] = asset->se;
 }
+
+
 
 static bool hit_asset(snake_t *snake, asset_t *asset)
 {

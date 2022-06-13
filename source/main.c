@@ -8,6 +8,7 @@
 
 #include <game_snake.h>
 #include <game_memory_raid.h>
+#include <game_wordle.h>
 
 
 
@@ -18,10 +19,11 @@
 
 
 
-uint snake_score;
-uint snake_score_high;
-uint memory_raid_score;
-uint memory_raid_score_high;
+int snake_score = 0;
+int snake_score_high = 0;
+int memory_raid_score = 0;
+int memory_raid_score_high = 0;
+int wordle_scores[7] = {0};
 
 
 
@@ -34,13 +36,6 @@ uint memory_raid_score_high;
 
 int main()
 {
-	snake_score				= 0;
-	snake_score_high 		= 0;
-	memory_raid_score 		= 0;
-	memory_raid_score_high	= 0;
-
-
-
 	// Permite interrupções de software com chamadas
 	// de funções presentes na BIOS
 	irq_init(NULL);
@@ -61,13 +56,13 @@ int main()
 	{
 		snake_score_high		= flash_read_word(SNAKE_GAME);
 		memory_raid_score_high	= flash_read_word(MEMORY_RAID_GAME);
+		for (int i = 0; i < 7; i++)
+			wordle_scores[i] = flash_read_word(WORDLE_GAME + i);
 	}
 
 
 
-
-
-	while (1)
+	while (true)
 	{
 		switch(init_menu())
 		{
@@ -78,7 +73,7 @@ int main()
 
 
 			case SNAKE_GAME:
-				RegisterRamReset(RESET_PALETTE | RESET_VRAM);
+				RegisterRamReset(RESET_PALETTE | RESET_VRAM | RESET_OAM);
 				snake_score = init_snake_game();
 				snake_score_high = MAX(snake_score, snake_score_high);
 			break;
@@ -86,17 +81,24 @@ int main()
 
 
 			case MEMORY_RAID_GAME:
-				RegisterRamReset(RESET_PALETTE | RESET_VRAM);
+				RegisterRamReset(RESET_PALETTE | RESET_VRAM | RESET_OAM);
 				memory_raid_score = init_memory_raid_game();
 				memory_raid_score_high = MAX(memory_raid_score, memory_raid_score_high);
 			break;
 
 
 
+			case WORDLE_GAME:
+				RegisterRamReset(RESET_PALETTE | RESET_VRAM | RESET_OAM);
+				wordle_scores[init_wordle_game()]++;
+			break;
+
+
+
 			default:
 				// Algo deu errado
-				RegisterRamReset(RESET_PALETTE | RESET_VRAM);
-				while (1);
+				RegisterRamReset(RESET_PALETTE | RESET_VRAM | RESET_OAM);
+				while (true);
 			break;
 		}
 
@@ -105,11 +107,13 @@ int main()
 		flash_save_word(SAVE_CODE, NULL_GAME);
 		flash_save_word(snake_score_high, SNAKE_GAME);
 		flash_save_word(memory_raid_score_high, MEMORY_RAID_GAME);
+		for (int i = 0; i < 7; i++)
+			flash_save_word(wordle_scores[i], WORDLE_GAME + i);
 	}
 
 
 
 	// Nunca deve chegar aqui
-	RegisterRamReset(RESET_PALETTE | RESET_VRAM);
-	while (1);
+	RegisterRamReset(RESET_PALETTE | RESET_VRAM | RESET_OAM);
+	while (true);
 }

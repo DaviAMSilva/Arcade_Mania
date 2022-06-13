@@ -95,7 +95,7 @@ typedef enum MemRaidPalBank // Paletas possíveis
 	PAL_BLUE	= 10,
 	PAL_WHITE	= 11,
 	PAL_CORE	= 12,
-} memRaidPakBank_t;
+} memRaidPalBank_t;
 
 
 
@@ -134,7 +134,7 @@ static int get_angle_index		(int dx, int dy);
 static int interpolate_angles	(int a1, int a2, float t);
 
 static void show_warnings		(int *phases_dirs, int *phases_pals, int *num_phases);
-static int shoot_bullets		(int *phases_dirs, int *phases_pals, int *num_phases);
+static bool shoot_bullets		(int *phases_dirs, int *phases_pals, int *num_phases);
 
 static void update_shield		(void);
 static void update_background	(void);
@@ -201,19 +201,13 @@ static OBJ_AFFINE *obj_aff_buffer = (OBJ_AFFINE *)obj_buffer;
 
 
 
+
+
+
+
+
 // Guarda a pontuação
 static int internal_score = 0;
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -253,10 +247,10 @@ int init_memory_raid_game()
 
 
 	// Valores iniciais
-	shield	= (shield_t)	{{120 - 32, 80 - 32}, SHIELD_REG_BUF, SHIELD_AFF_BUF, CC0, CC0, phases_pals[0], phases_dirs[0]};
-	core	= (core_t)		{{120 - 16, 80 - 16}, CORE_REG_BUF, CORE_AFF_BUF, CC0, CC0, 0, 0};
-	warning	= (warning_t)	{{0,0}, WARNING_BUF, phases_pals[0], phases_dirs[0]};
-	bullet	= (bullet_t)	{bullet_starts[phases_dirs[0]], BULLET_BUF, phases_pals[0], phases_dirs[0]};
+	shield	= (shield_t)	{ {120 - 32, 80 - 32}, SHIELD_REG_BUF, SHIELD_AFF_BUF, CC0, CC0, phases_pals[0], phases_dirs[0] };
+	core	= (core_t)		{ {120 - 16, 80 - 16}, CORE_REG_BUF, CORE_AFF_BUF, CC0, CC0, 0, 0 };
+	warning	= (warning_t)	{ {0,0}, WARNING_BUF, phases_pals[0], phases_dirs[0] };
+	bullet	= (bullet_t)	{ bullet_starts[phases_dirs[0]], BULLET_BUF, phases_pals[0], phases_dirs[0] };
 
 
 
@@ -321,7 +315,7 @@ int init_memory_raid_game()
 
 
 
-	while (1)
+	while (true)
 	{
 		// Dá tempo de respirar
 		for (int i = 0; i < BREATHING_TIMER; i++)
@@ -341,6 +335,8 @@ int init_memory_raid_game()
 		// Realiza os movimentos em si
 		if (shoot_bullets(phases_dirs, phases_pals, &num_phases))
 		{
+			fade_to_black();
+
 			// O jogo acabou
 			return internal_score;
 		}
@@ -360,16 +356,6 @@ int init_memory_raid_game()
 		update_background();
 	}
 }
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -431,7 +417,7 @@ static void show_warnings(int *phases_dirs, int *phases_pals, int *num_phases)
 
 
 
-static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
+static bool shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 {
 	for (int cur_phase = 0; cur_phase < *num_phases; cur_phase++)
 	{
@@ -471,8 +457,6 @@ static int shoot_bullets(int *phases_dirs, int *phases_pals, int *num_phases)
 		{
 			// Som de morte
 			REG_SND1FREQ = SFREQ_RESET | SND_RATE(NOTE_F, 3);
-
-			fade_to_black();
 
 			return 1;
 		}

@@ -5,8 +5,8 @@
 #include <general.h>
 #include <flash.h>
 
-#include <data/BG_Menu.h>
-#include <data/BG_MenuOverlay.h>
+#include <data/BG_Menu_Games.h>
+#include <data/BG_Menu_Overlay.h>
 
 
 
@@ -29,10 +29,23 @@
 
 
 
-extern uint snake_score;
-extern uint snake_score_high;
-extern uint memory_raid_score;
-extern uint memory_raid_score_high;
+extern int snake_score;
+extern int snake_score_high;
+extern int memory_raid_score;
+extern int memory_raid_score_high;
+extern int wordle_scores[7];
+
+
+
+
+
+
+
+
+
+
+// Tratamos o mapa de memória como um array de SBBs para facilitar a cópia
+SCREENBLOCK *bg_menu_games = (SCREENBLOCK *)BG_Menu_GamesMap;
 
 
 
@@ -54,15 +67,14 @@ gameIndex_t init_menu(void)
 	REG_BG1CNT = BG_CBB(2) | BG_SBB(26)	| BG_REG_32x32 | BG_8BPP | BG_PRIO(0);
 
 	// Copiando os tiles
-	memcpy32(tile8_mem[0], BG_MenuTiles, BG_MenuTilesLen / 4);
-	memcpy32(tile8_mem[2], BG_MenuOverlayTiles, BG_MenuOverlayTilesLen / 4);
+	memcpy32(tile8_mem[0], BG_Menu_GamesTiles, BG_Menu_GamesTilesLen / 4);
+	memcpy32(tile8_mem[2], BG_Menu_OverlayTiles, BG_Menu_OverlayTilesLen / 4);
 
 	// Copiando os mapas
-	memcpy32(se_mem[24], BG_MenuMap, BG_MenuMapLen / 4);
-	memcpy32(se_mem[26], BG_MenuOverlayMap, BG_MenuOverlayMapLen / 4);
+	memcpy32(se_mem[26], BG_Menu_OverlayMap, BG_Menu_OverlayMapLen / 4);
 
 	// A paleta de cores é igual para os dois
-	memcpy32(pal_bg_mem, BG_MenuPal, BG_MenuPalLen / 4);
+	memcpy32(pal_bg_mem, BG_Menu_OverlayPal, BG_Menu_OverlayPalLen / 4);
 	pal_bg_mem[0] = CLR_BLACK;
 
 
@@ -73,6 +85,9 @@ gameIndex_t init_menu(void)
 	static int game_index = 0;
 	static int xoffset = 0;
 
+	// Usado para definir qual o índice do SBB a ser usado
+	static int sbb_index = 0;
+
 	// Usado para reiniciar a pontuação mais alta
 	int reset_timer = 0;
 
@@ -80,38 +95,47 @@ gameIndex_t init_menu(void)
 
 
 
-	// Guarda as strings das pontuações
-	char scores_buffer[4][9] = {0};
+	// Copiando o mapa do primeiro jogo
+	memcpy32(se_mem[24 + sbb_index], bg_menu_games + game_index, sizeof(bg_menu_games[0]) / 4);
+	
 
-	snprintf(scores_buffer[0], 9, "%8.8d", 100 * snake_score_high);
-	snprintf(scores_buffer[1], 9, "%8.8d", 100 * snake_score);
-	snprintf(scores_buffer[2], 9, "%8.8d", 100 * memory_raid_score_high);
-	snprintf(scores_buffer[3], 9, "%8.8d", 100 * memory_raid_score);
+
+
+
+
+	// FIXME: Fazer a impressão das pontuações voltar a funcionar
+	// As pontuações ainda estão sendo salvas corretamente
+	// Guarda as strings das pontuações
+	// char scores_buffer[4][9] = {0};
+
+	// snprintf(scores_buffer[0], 9, "%8.8d", 100 * snake_score_high);
+	// snprintf(scores_buffer[1], 9, "%8.8d", 100 * snake_score);
+	// snprintf(scores_buffer[2], 9, "%8.8d", 100 * memory_raid_score_high);
+	// snprintf(scores_buffer[3], 9, "%8.8d", 100 * memory_raid_score);
 
 
 
 	// Muito complicado para explicar, apenas inicia o texto para as pontuações
-	tte_init_se(
-        0,
-        BG_CBB(0) | BG_SBB(24)	| BG_REG_64x32 | BG_8BPP | BG_PRIO(1),
-        BG_MenuTilesLen / sizeof(TILE8),
-        CLR_WHITE,
-        14,
-        NULL,
-        NULL
-	); 
-
+	// tte_init_se(
+    //     0,
+    //     BG_CBB(0) | BG_SBB(24) | BG_REG_64x64 | BG_8BPP | BG_PRIO(1),
+    //     BG_Menu_GamesTilesLen / sizeof(TILE8),
+    //     CLR_WHITE,
+    //     14,
+    //     NULL,
+    //     NULL
+	// );
 
 
 	// Imprime as pontuações atuais e as maiores pontuações
-	tte_set_pos(64, 64);
-	tte_write(scores_buffer[0]);
-	tte_set_pos(64, 72);
-	tte_write(scores_buffer[1]);
-	tte_set_pos(64, 64 + 256);
-	tte_write(scores_buffer[2]);
-	tte_set_pos(64, 72 + 256);
-	tte_write(scores_buffer[3]);
+	// tte_set_pos(64, 64);
+	// tte_write(scores_buffer[0]);
+	// tte_set_pos(64, 72);
+	// tte_write(scores_buffer[1]);
+	// tte_set_pos(64, 64 + 256);
+	// tte_write(scores_buffer[2]);
+	// tte_set_pos(64, 72 + 256);
+	// tte_write(scores_buffer[3]);
 
 
 
@@ -128,7 +152,7 @@ gameIndex_t init_menu(void)
 
 
 
-	while (1)
+	while (true)
 	{
 		key_poll();
 
@@ -170,33 +194,36 @@ gameIndex_t init_menu(void)
 
 
 
-		// Move esquerda/direita
+		// Move esquerda/direita 64 * 4 = 256 pixels
+		int direction = 0;
 		if (key_is_down(KEY_R) || key_is_down(KEY_RIGHT))
-		{
-			for (int i = 0; i < 64; i++)
-			{
-				xoffset += 4;
-				VBlankIntrWait();
-				REG_BG0HOFS = xoffset;
-			}
-
-			game_index = (game_index + NUM_GAMES + 1) % NUM_GAMES;
-		}
+			direction = 1;
 		else if (key_is_down(KEY_L) || key_is_down(KEY_LEFT))
+			direction = -1;
+
+		if (direction)
 		{
+			game_index = (game_index + NUM_GAMES + direction) % NUM_GAMES;
+
+			// Isso realiza a troca entre o primeiro e o segundo SBB
+			sbb_index = (sbb_index + 1) % 2;
+
+			// Copiando o mapa do próximo jogo dinamicamente
+			memcpy32(se_mem[24 + sbb_index], bg_menu_games + game_index, sizeof(bg_menu_games[0]) / 4);
+
+			// Move o background para a esquerda/direita 64 * 4 = 256 pixels
 			for (int i = 0; i < 64; i++)
 			{
-				xoffset -= 4;
+				xoffset += 4 * direction;
 				VBlankIntrWait();
 				REG_BG0HOFS = xoffset;
 			}
-
-			game_index = (game_index + NUM_GAMES - 1) % NUM_GAMES;
 		}
 
 
 
-		// Deixa um pouco mais aleatório no início
+		// Torna o jogo um pouco mais aleatório no início, dessa maneira a seed é dependente da
+		// quantidade de frames que o jogo ficou ligado antes de ser iniciado 
 		srand(rand() + game_index);
 	}
 }
