@@ -42,10 +42,17 @@
 
 #define ANIMATION_HIGHLIGHT_DURATION	10
 #define ANIMATION_HIGHLIGHT_EXPANSION	0.20f
-#define ANIMATION_REVEAL_ZOOM			14
+
+#define ANIMATION_REVEAL_ZOOM			16
 #define ANIMATION_REVEAL_WAIT_SMALL		0
 #define ANIMATION_REVEAL_WAIT_BIG		5
-#define ANIMATION_REVEAL_FRAMES			0
+#define ANIMATION_REVEAL_FRAMES			1
+
+#define ANIMATION_BOUNCE_SIZE			10
+#define ANIMATION_BOUNCE_STEP			2
+#define ANIMATION_BOUNCE_WAIT_SMALL		0
+#define ANIMATION_BOUNCE_WAIT_BIG		1
+#define ANIMATION_BOUNCE_FRAMES			1
 
 
 
@@ -91,13 +98,6 @@ typedef enum WordleSpecialSymbol
 	SYMBOL_SELECTOR,
 } wordleSpecialSymbol_t;
 
-typedef enum WordleAnimation
-{
-	ANIMATION_HIDDEN = 0,
-	ANIMATION_REVEAL,
-	ANIMATION_HIGHLIGHT,
-} wordleAnimation_t;
-
 
 
 
@@ -113,12 +113,11 @@ typedef struct SymbolInfo
 	u8 pal;
 } symbolInfo_t;
 
-typedef struct AnimationInfo
+typedef struct HighlightAnimationInfo
 {
 	int timer;
-	int delay;
-	wordleAnimation_t type;
-} animationInfo_t;
+	bool is_active;
+} highlightAnimationInfo_t;
 
 
 
@@ -133,10 +132,11 @@ static int get_object_id				(int index);
 static void update_symbols				(OBJ_ATTR *objs, symbolInfo_t *symbol_info, int num_symbols);
 static int wordle_compare				(symbolInfo_t *letter_info, symbolInfo_t *button_info, char *solution);
 static bool is_word_valid				(symbolInfo_t *letter_info);
-static void start_animation				(animationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg, wordleAnimation_t type, int duration, int id, int x, int y);
-static void stop_animation				(animationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg);
-static bool handle_highlight_animation	(animationInfo_t *animation_info, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff);
-static void handle_reveal_animation		(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff, OBJ_ATTR *obj_letters, symbolInfo_t *letter_info, char *solution);
+static void start_highlight_animation	(highlightAnimationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg, int duration, int id, wordlePalBank_t pal, int x, int y);
+static void stop_highlight_animation	(highlightAnimationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg);
+static bool handle_highlight_animation	(highlightAnimationInfo_t *animation_info, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff);
+static void handle_reveal_animation		(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff, OBJ_ATTR *obj_letters, char *solution, symbolInfo_t *letter_info);
+static void handle_bounce_animation		(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff, OBJ_ATTR *obj_letters, char *solution);
 
 
 
@@ -211,7 +211,7 @@ int init_wordle_game(void)
 	symbolInfo_t button_info[BUTTON_LENGTH_Y][BUTTON_LENGTH_X] = { 0 };
 
 	// Salva as informações sobre as animações
-	animationInfo_t animation_info[NUM_ANIMATIONS] = { 0 };
+	highlightAnimationInfo_t animation_info[NUM_ANIMATIONS] = { 0 };
 
 
 
@@ -221,10 +221,9 @@ int init_wordle_game(void)
 	char solution[WORD_LENGTH] = {0};
 
 	// Selecionando a palavra a ser resolvida aleatoriamente da lista de palavras mais comuns
-	// int solution_index = rand() % WORDLE_WORD_BANK_LENGTH;
-	// for (int i = 0; i < WORD_LENGTH; i++)
-	// 	solution[i] = wordle_word_bank[solution_index][i];
-	strncpy(solution, "magma", WORD_LENGTH);
+	int solution_index = rand() % WORDLE_WORD_BANK_LENGTH;
+	for (int i = 0; i < WORD_LENGTH; i++)
+		solution[i] = wordle_word_bank[solution_index][i];
 
 
 
@@ -233,12 +232,12 @@ int init_wordle_game(void)
 	// Essa variável será usada para saber qual letra está selecionada
 	POINT selector_pos = {0, 0};
 
+	// Essa variável será usada para saber qual letra será escrita
+	POINT cursor_pos = {0, 0};
+
 	// Essas variáveis servem para animar o seletor de um lugar para outro
 	POINT selector_current_pos		= {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
 	POINT selector_destination_pos	= {	BUTTON_OFFSET_X, BUTTON_OFFSET_Y };
-
-	// Essa variável será usada para saber qual letra será escrita
-	POINT cursor_pos = {0, 0};
 
 
 
@@ -326,7 +325,7 @@ int init_wordle_game(void)
 			obj_results + i,
 			ATTR0_SQUARE | ATTR0_HIDE,
 			ATTR1_SIZE_16,
-			ATTR2_PALBANK(PAL_RESULT) | ATTR2_ID(get_object_id(("troll")[i] - 'a' + 1)) // trolled
+			ATTR2_PALBANK(PAL_RESULT) | ATTR2_PRIO(1) | ATTR2_ID(get_object_id(("troll")[i] - 'a' + 1)) // trolled
 		);
 
 		obj_set_pos(
@@ -362,16 +361,17 @@ int init_wordle_game(void)
 
 
 	// Loop principal do jogo
+	int correct_count = 0;
 	while (true)
 	{
-		int correct_count = 0;
+		bool is_animating = false;
 
 
 
 
 
 		// Atualiza todas as animações de destaque
-		handle_highlight_animation(animation_info, obj_animations_reg, obj_animations_aff);
+		is_animating = handle_highlight_animation(animation_info, obj_animations_reg, obj_animations_aff);
 
 
 
@@ -430,8 +430,7 @@ int init_wordle_game(void)
 					letter_info[cursor_pos.y][cursor_pos.x].letter = SYMBOL_EMPTY;
 
 					// Finaliza a animação de destaque
-					if (animation_info[cursor_pos.x].type != ANIMATION_HIDDEN)
-						stop_animation(animation_info + cursor_pos.x, obj_animations_reg + cursor_pos.x);
+					stop_highlight_animation(animation_info + cursor_pos.x, obj_animations_reg + cursor_pos.x);
 				}
 			}
 			else if ((key_hit(KEY_A) && selector_index + 1 == SYMBOL_ENTER) || key_hit(KEY_START))
@@ -442,36 +441,55 @@ int init_wordle_game(void)
 				{
 					// Cancela todas as animações
 					for (int i = 0; i < NUM_ANIMATIONS; i++)
-						stop_animation(animation_info + i, obj_animations_reg + i);
+						stop_highlight_animation(animation_info + i, obj_animations_reg + i);
 
 					if (is_word_valid(letter_info[cursor_pos.y]))
 					{
 						correct_count = wordle_compare(letter_info[cursor_pos.y], (symbolInfo_t *)button_info, solution);
 
 						// Inicia a animação de revelar a palavra
-						handle_reveal_animation(cursor_pos.y, obj_animations_reg, obj_animations_aff, obj_letters, (symbolInfo_t *)letter_info[cursor_pos.y], solution);
+						handle_reveal_animation(cursor_pos.y, obj_animations_reg, obj_animations_aff, obj_letters, solution, (symbolInfo_t *)letter_info[cursor_pos.y]);
 
 						update_symbols(obj_letters, (symbolInfo_t *)letter_info, NUM_LETTERS);
 						update_symbols(obj_buttons, (symbolInfo_t *)button_info, NUM_BUTTONS);
 
+
+
+						// Se a palavra estiver correta iniciar a animação de pulo da palavra correta
+						if (correct_count == WORD_LENGTH)
+						{
+							VBlankIntrDelay(15);
+							handle_bounce_animation(cursor_pos.y, obj_animations_reg, obj_animations_aff, obj_letters, solution);
+						}
+
+
+
 						cursor_pos.x = 0;
 						cursor_pos.y++;
+
+
+
+						// Se as tentativas acabarem iniciar a animação de pulo da solução
+						if (cursor_pos.y == NUM_ATTEMPTS && correct_count != WORD_LENGTH)
+						{
+							VBlankIntrDelay(15);
+							handle_bounce_animation(-1, obj_animations_reg, obj_animations_aff, obj_letters, solution);
+						}
 					}
 					else
 					{
 						// Animação de destaque, para que o usuário saiba que a palavra não é válida
 						for (int i = 0; i < NUM_ANIMATIONS; i++)
 						{
-							if (animation_info[i].type == ANIMATION_HIDDEN)
-								start_animation(
-									animation_info + i,
-									obj_animations_reg + i,
-									ANIMATION_HIGHLIGHT,
-									ANIMATION_HIGHLIGHT_DURATION,
-									get_object_id(letter_info[cursor_pos.y][i].letter - 'a' + 1),
-									LETTER_OFFSET_X + i * LETTER_SIZE_X - LETTER_SIZE_X / 2,
-									LETTER_OFFSET_Y + cursor_pos.y * LETTER_SIZE_Y - LETTER_SIZE_Y / 2
-								);
+							start_highlight_animation(
+								animation_info + i,
+								obj_animations_reg + i,
+								ANIMATION_HIGHLIGHT_DURATION,
+								get_object_id(letter_info[cursor_pos.y][i].letter - 'a' + 1),
+								PAL_EMPTY,
+								LETTER_OFFSET_X + i * LETTER_SIZE_X - LETTER_SIZE_X / 2,
+								LETTER_OFFSET_Y + cursor_pos.y * LETTER_SIZE_Y - LETTER_SIZE_Y / 2
+							);
 						}
 					}
 				}
@@ -480,16 +498,15 @@ int init_wordle_game(void)
 					// Animação de destaque, para que o usuário saiba que a palavra não é válida
 					for (int i = 0; i < cursor_pos.x; i++)
 					{
-						if (animation_info[i].type == ANIMATION_HIDDEN)
-							start_animation(
-								animation_info + i,
-								obj_animations_reg + i,
-								ANIMATION_HIGHLIGHT,
-								ANIMATION_HIGHLIGHT_DURATION,
-								get_object_id(letter_info[cursor_pos.y][i].letter - 'a' + 1),
-								LETTER_OFFSET_X + i * LETTER_SIZE_X - LETTER_SIZE_X / 2,
-								LETTER_OFFSET_Y + cursor_pos.y * LETTER_SIZE_Y - LETTER_SIZE_Y / 2
-							);
+						start_highlight_animation(
+							animation_info + i,
+							obj_animations_reg + i,
+							ANIMATION_HIGHLIGHT_DURATION,
+							get_object_id(letter_info[cursor_pos.y][i].letter - 'a' + 1),
+							PAL_EMPTY,
+							LETTER_OFFSET_X + i * LETTER_SIZE_X - LETTER_SIZE_X / 2,
+							LETTER_OFFSET_Y + cursor_pos.y * LETTER_SIZE_Y - LETTER_SIZE_Y / 2
+						);
 					}
 				}
 			}
@@ -503,8 +520,7 @@ int init_wordle_game(void)
 						letter_info[cursor_pos.y][i].letter = SYMBOL_EMPTY;
 
 						// Finaliza a animação de destaque
-						if (animation_info[i].type != ANIMATION_HIDDEN)
-							stop_animation(animation_info + i, obj_animations_reg + i);
+						stop_highlight_animation(animation_info + i, obj_animations_reg + i);
 					}
 
 					cursor_pos.x = 0;
@@ -515,12 +531,12 @@ int init_wordle_game(void)
 				if (cursor_pos.x <= LETTER_LENGTH_X - 1 && cursor_pos.y < LETTER_LENGTH_Y)
 				{
 					// Animação da letra aumentar e diminuir
-					start_animation(
+					start_highlight_animation(
 						animation_info + cursor_pos.x,
 						obj_animations_reg + cursor_pos.x,
-						ANIMATION_HIGHLIGHT,
 						ANIMATION_HIGHLIGHT_DURATION,
 						get_object_id(selector_index + 1),
+						PAL_EMPTY,
 						LETTER_OFFSET_X + cursor_pos.x * LETTER_SIZE_X - LETTER_SIZE_X / 2,
 						LETTER_OFFSET_Y + cursor_pos.y * LETTER_SIZE_Y - LETTER_SIZE_Y / 2
 					);
@@ -540,18 +556,28 @@ int init_wordle_game(void)
 
 
 
+
+
+
+
+
 		// Se o jogador acerta tudo ou chegar na última tentativa o jogo acaba
-		if (correct_count == WORD_LENGTH || cursor_pos.y == LETTER_LENGTH_Y)
+		if ((correct_count == WORD_LENGTH || cursor_pos.y == LETTER_LENGTH_Y) && !is_animating)
 		{
-			for (int i = 0; i < NUM_RESULTS; i++)
+			// Mostrar o resultado apenas se o jogador não tiver acertado todas as letras
+			if (cursor_pos.y == LETTER_LENGTH_Y && correct_count != WORD_LENGTH)
 			{
-				BFN_SET(obj_results[i].attr2, get_object_id(solution[i] - 'a' + 1), ATTR2_ID);
-				obj_unhide(obj_results + i, ATTR0_REG);
+				for (int i = 0; i < NUM_RESULTS; i++)
+				{
+					BFN_SET(obj_results[i].attr2, get_object_id(solution[i] - 'a' + 1), ATTR2_ID);
+					obj_unhide(obj_results + i, ATTR0_REG);
+				}
 			}
 
 			VBlankIntrWait();
 			obj_copy(obj_mem, obj_buffer, 128);
 
+			VBlankIntrDelay(60);
 			key_wait_till_hit(KEY_ANY);
 
 			fade_to_black();
@@ -565,6 +591,13 @@ int init_wordle_game(void)
 		VBlankIntrWait();
 		oam_copy(obj_mem, obj_buffer, 128);
 	}
+
+
+
+
+
+
+
 
 
 
@@ -740,24 +773,24 @@ static bool is_word_valid(symbolInfo_t *letter_info)
 
 
 // Define os valores iniciais para que um objeto comece a ser animado
-static void start_animation(animationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg, wordleAnimation_t type, int duration, int id, int x, int y)
+static void start_highlight_animation(highlightAnimationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg, int duration, int id, wordlePalBank_t pal, int x, int y)
 {
-	animation_info->type = type;
+	animation_info->is_active = true;
 	animation_info->timer = duration;
 
 	obj_unhide(obj_animation_reg, ATTR0_AFF_DBL);
 	obj_set_pos(obj_animation_reg, x, y);
 
 	BFN_SET(obj_animation_reg[0].attr2, id, ATTR2_ID);
-	BFN_SET(obj_animation_reg[0].attr2, PAL_EMPTY, ATTR2_PALBANK);
+	BFN_SET(obj_animation_reg[0].attr2, pal, ATTR2_PALBANK);
 }
 
 
 
 // Interrompe a animação de um objeto
-static void stop_animation(animationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg)
+static void stop_highlight_animation(highlightAnimationInfo_t *animation_info, OBJ_ATTR *obj_animation_reg)
 {
-	animation_info->type = ANIMATION_HIDDEN;
+	animation_info->is_active = false;
 	animation_info->timer = -1;
 
 	obj_hide(obj_animation_reg);
@@ -766,7 +799,7 @@ static void stop_animation(animationInfo_t *animation_info, OBJ_ATTR *obj_animat
 
 
 // Animação de destacar uma letra
-static bool handle_highlight_animation(animationInfo_t *animation_info, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff)
+static bool handle_highlight_animation(highlightAnimationInfo_t *animation_info, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff)
 {
 	// Variáveis constantes usadas para calcular a animação de destaque
 	const FIXED max_offset = float2fx(ANIMATION_HIGHLIGHT_EXPANSION);
@@ -779,13 +812,13 @@ static bool handle_highlight_animation(animationInfo_t *animation_info, OBJ_ATTR
 	for (int i = 0; i < NUM_ANIMATIONS; i++)
 	{
 		// Pula as animações que não estão sendo executadas
-		if (animation_info[i].type != ANIMATION_HIGHLIGHT)
+		if (!animation_info[i].is_active)
 			continue;
 
 		// Se o timer é menor que zero parar a animação
 		if (animation_info[i].timer < 0)
 		{
-			stop_animation(animation_info + i, obj_animations_reg + i);
+			stop_highlight_animation(animation_info + i, obj_animations_reg + i);
 			continue;
 		}
 
@@ -823,11 +856,18 @@ static bool handle_highlight_animation(animationInfo_t *animation_info, OBJ_ATTR
 
 
 
+
+
+
+
+
+
+
 // Animação de revelar a palavra
-static void handle_reveal_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff, OBJ_ATTR *obj_letters, symbolInfo_t *letter_info, char *solution)
+static void handle_reveal_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff, OBJ_ATTR *obj_letters, char *solution, symbolInfo_t *letter_info)
 {
 	// Escondendo as letras
-	obj_hide_multi(obj_letters + WORD_LENGTH * y, WORD_LENGTH);
+	obj_hide_multi(obj_letters + LETTER_LENGTH_X * y, WORD_LENGTH);
 
 	// Exibindo os objetos de animação
 	obj_unhide_multi(obj_animations_reg, ATTR0_AFF, NUM_ANIMATIONS);
@@ -843,8 +883,7 @@ static void handle_reveal_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFF
 
 	VBlankIntrWait();
 
-	obj_copy(obj_mem, obj_buffer, 128);
-	obj_aff_copy(obj_aff_mem, obj_aff_buffer, 32);
+	oam_copy(oam_mem, obj_buffer, 128);
 
 	VBlankIntrDelay(ANIMATION_REVEAL_WAIT_BIG);
 
@@ -853,9 +892,9 @@ static void handle_reveal_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFF
 	for (int i = 0; i < NUM_ANIMATIONS; i++)
 	{
 		// Diminuindo a letra
-		for (int k = 1; k <= ANIMATION_REVEAL_ZOOM; k++)
+		for (int j = 1; j <= ANIMATION_REVEAL_ZOOM; j++)
 		{
-			obj_aff_scale(obj_animations_aff + i, FIX_ONE, int2fx(k));
+			obj_aff_scale(obj_animations_aff + i, FIX_ONE, int2fx(j));
 			VBlankIntrDelay(ANIMATION_REVEAL_FRAMES);
 			obj_copy(obj_mem, obj_buffer, 128);
 			obj_aff_copy(obj_aff_mem, obj_aff_buffer, 32);
@@ -866,9 +905,9 @@ static void handle_reveal_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFF
 		VBlankIntrDelay(ANIMATION_REVEAL_WAIT_SMALL);
 
 		// Aumentando a letra
-		for (int k = ANIMATION_REVEAL_ZOOM; k >= 1; k--)
+		for (int j = ANIMATION_REVEAL_ZOOM; j >= 1; j--)
 		{
-			obj_aff_scale(obj_animations_aff + i, FIX_ONE, int2fx(k));
+			obj_aff_scale(obj_animations_aff + i, FIX_ONE, int2fx(j));
 			VBlankIntrDelay(ANIMATION_REVEAL_FRAMES);
 			obj_copy(obj_mem, obj_buffer, 128);
 			obj_aff_copy(obj_aff_mem, obj_aff_buffer, 32);
@@ -882,4 +921,82 @@ static void handle_reveal_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFF
 
 	// Exibindo as letras
 	obj_unhide_multi(obj_letters + WORD_LENGTH * y, ATTR0_REG, WORD_LENGTH);
+}
+
+
+
+static void handle_bounce_animation(int y, OBJ_ATTR *obj_animations_reg, OBJ_AFFINE *obj_animations_aff, OBJ_ATTR *obj_letters, char *solution)
+{
+	// Escondendo as letras se for o caso
+	if (y >= 0)
+		obj_hide_multi(obj_letters + LETTER_LENGTH_X * y, WORD_LENGTH);
+
+	// Exibindo os objetos de animação
+	obj_unhide_multi(obj_animations_reg, ATTR0_AFF, NUM_ANIMATIONS);
+
+	// As posições dos objetos de animação são definidas no início da função
+	POINT positions[NUM_ANIMATIONS] = { 0 };
+
+	// Posicionando e definindo as informações sobre os objetos de animação
+	for (int i = 0; i < NUM_ANIMATIONS; i++)
+	{
+		if (y >= 0)
+		{
+			// Posição dentro das letras
+			positions[i].x = LETTER_OFFSET_X + i * LETTER_SIZE_X;
+			positions[i].y = LETTER_OFFSET_Y + y * LETTER_SIZE_Y;
+		}
+		else
+		{
+			// Posição do resultado
+			positions[i].x = RESULT_OFFSET_X + i * RESULT_SIZE_X;
+			positions[i].y = RESULT_OFFSET_Y;
+		}
+
+		// Posição, id e matriz identidade
+		obj_set_pos(obj_animations_reg + i, positions[i].x, positions[i].y);
+		BFN_SET(obj_animations_reg[i].attr2, get_object_id(solution[i] - 'a' + 1), ATTR2_ID);
+		obj_aff_identity(obj_animations_aff + i);
+
+		if (y >= 0)
+			BFN_SET(obj_animations_reg[i].attr2, PAL_CORRECT, ATTR2_PALBANK);
+		else
+			BFN_SET(obj_animations_reg[i].attr2, PAL_RESULT, ATTR2_PALBANK);
+	}
+
+	VBlankIntrWait();
+
+	oam_copy(oam_mem, obj_buffer, 128);
+
+
+
+	VBlankIntrDelay(ANIMATION_BOUNCE_WAIT_BIG);
+
+	for (int i = 0; i < NUM_ANIMATIONS; i++)
+	{
+		for (int j = 0; j < ANIMATION_BOUNCE_SIZE; j += ANIMATION_BOUNCE_STEP)
+		{
+			// Posição do objeto de animação
+			obj_set_pos(obj_animations_reg + i, positions[i].x, --positions[i].y);
+			VBlankIntrDelay(ANIMATION_BOUNCE_FRAMES);
+			obj_copy(obj_mem, obj_buffer, 128);
+		}
+
+		for (int j = 0; j < ANIMATION_BOUNCE_SIZE; j += ANIMATION_BOUNCE_STEP)
+		{
+			// Posição do objeto de animação
+			obj_set_pos(obj_animations_reg + i, positions[i].x, ++positions[i].y);
+			VBlankIntrDelay(ANIMATION_BOUNCE_FRAMES);
+			obj_copy(obj_mem, obj_buffer, 128);
+		}
+
+		VBlankIntrDelay(ANIMATION_BOUNCE_WAIT_BIG);
+	}
+
+	// Esconde os objetos de animação
+	obj_hide_multi(obj_animations_reg, NUM_ANIMATIONS);
+
+	// Exibindo as letras
+	if (y >= 0)
+		obj_unhide_multi(obj_letters + LETTER_LENGTH_X * y, ATTR0_REG, WORD_LENGTH);
 }

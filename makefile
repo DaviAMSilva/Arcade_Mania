@@ -93,12 +93,12 @@ all: $(TARGET).gba
 
 
 # Argumentos
-CFLAGS		:= -Wall -mthumb -mthumb-interwork -O3
+CFLAGS		:= -Wall -mthumb -mthumb-interwork
 LDFLAGS 	:= -Wall -mthumb -mthumb-interwork $(LIBRARIES) -specs=gba.specs
 
 
 
-.PHONY: all clean dirs data release debug
+.PHONY: all clean clean_build clean_data clean_intermediates data data_objects debug dirs release
 
 
 
@@ -195,12 +195,12 @@ $(BLDDIR)/%.o: $(SRCDIR)/%.c | $(BUILD_DIRS)
 
 
 # Compila o binário .elf final
-$(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS)
+$(TARGET).elf: $(DATA_INCLUDES) $(DATA_OBJECTS) $(OBJECTS) | $(BUILD_DIRS)
 	@echo "$(PURPLE)$(BRIGHT)ELF - $(PURPLE)'$(BLDDIR)/*.o $(BLDDIR)/$(DATDIR)/*.o' -> $@$(RESET)"
 	@$(CC) $^ $(LDFLAGS) -o $@ $(INCLUDES)
 
 # Compila o arquivo .gba final
-$(TARGET).gba: $(TARGET).elf
+$(TARGET).gba: $(TARGET).elf | $(BUILD_DIRS)
 	@echo "$(PURPLE)$(BRIGHT)GBA - $(PURPLE)$^ -> $@"
 	@echo -n "$(PURPLE)$(BRIGHT)CPY - $(PURPLE)"
 	@$(OBJCOPY) -v -O binary $^ $@
@@ -230,16 +230,30 @@ dirs: $(BUILD_DIRS)
 data: $(DATA_INCLUDES) $(DATA_SOURCES)
 data_objects: $(DATA_OBJECTS)
 
-# Faz a limpeza
+# Faz a limpeza de tudo
 clean:
 	@echo "$(RED)$(BRIGHT)RMD - $(RED)Removendo '$(BUILD_DIRS)'$(RESET)"
 	@rm -fr $(BUILD_DIRS)
 
-# Compilar e limpar intermediários
-release: all
+# Faz a limpeza apenas dos arquivos de dados
+clean_data:
+	@echo "$(RED)$(BRIGHT)RMD - $(RED)Removendo '$(DATDIR)'$(RESET)"
+	@rm -fr $(BLDDIR)/$(DATDIR)
+
+# Faz a limpeza apenas dos arquivos de compilação
+clean_build:
+	@echo "$(RED)$(BRIGHT)RMD - $(RED)Removendo '$(BLDDIR)'$(RESET)"
+	@rm -fr $(BLDDIR)
+
+# Faz a limpeza apenas dos arquivos intermediários
+clean_intermediates:
 	@echo "$(RED)$(BRIGHT)RMD - $(RED)Removendo '$(BLDDIR) $(TARGET).elf'$(RESET)"
 	@rm -fr $(BLDDIR) $(TARGET).elf
 
+# Compilar com otimização
+release: CFLAGS += -O3
+release: all
+
 # Compilar com informação de debug
-debug: all
 debug: CFLAGS += -g3 -Og
+debug: all
